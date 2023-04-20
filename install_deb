@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import os
+
+# current working directory
+cur_dir = os.getcwd()
+# listing all sub-directories
+sub_dir = sorted(os.listdir(cur_dir))
+
+# checking for subdiectories
+for x in sub_dir:
+    sub_dir_path = cur_dir + '/' + x
+    if os.path.isdir(sub_dir_path):
+        # checking for .deb file
+        file_path = sub_dir_path + '/' + 'install.deb'
+        if os.path.exists(file_path):
+            # install the file
+            os.system('sudo dpkg -i %s' % file_path)
+        else:
+            pass
+            
