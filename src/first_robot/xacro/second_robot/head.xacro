@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="head2">
+    
+    <material name="white">
+      <color rgba="1 1 1 1"/>
+    </material>
+
+    <link name="head2">
+        <visual>
+            <geometry>
+                <sphere radius="0.08"/>
+            </geometry>
+        <material name="white"/>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.08"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+        </inertial>
+    </link>
+    <joint name="head_to_base_joint" type="continuous">
+        <origin xyz="0.0 0.0 0.05" rpy="0.0 0.0 0.0"/>
+        <parent link="base_link2"/>
+        <child link="head2"/>
+        <axis xyz="0.0 0.0 1.0"/>
+    </joint>
+    <transmission name="head_trans">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="head_to_base_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="head_motor">
+            <mechanicalReduction>1.0</mechanicalReduction>
+        </actuator>
+    </transmission>
+</robot>
