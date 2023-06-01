@@ -1,0 +1,9 @@
+<launch>
+  <arg name="topic"/>
+  <arg name="bag"/>
+  <node pkg="rosbag" type="play" name="rosbag" required="true" args="$(find ros_bag)/bag/$(arg bag)"/>
+  <node name="extract" pkg="image_view" type="extract_images" respawn="false" required="true" output="screen" cwd="ROS_HOME">
+    <remap from="image" to="$(arg topic)"/>
+  </node>
+  <!--<node pkg="ros_bag" type="img_video.py" name="img_video" required="true" args="$(arg output)"/>-->
+</launch>
