@@ -38,12 +38,14 @@ class Contours:
         gray = cv.cvtColor(roi2, cv.COLOR_BGR2GRAY)
         blur = cv.GaussianBlur(gray, (5, 5), 0)
         edge = cv.Canny(blur, 30, 255)
-        ret2, thresh = cv.threshold(gray, 35, 255, cv.THRESH_BINARY)
-        mask = cv.bitwise_not(thresh)
-        img_fg = cv.add(edge, mask)
-
+        # ret2, thresh = cv.threshold(gray, 35, 255, cv.THRESH_BINARY)
+        # mask = cv.bitwise_not(thresh)
+        # img_fg = cv.add(edge, mask)
+        #
         # adap_thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 19, 6)
+        # adap_mask = cv.bitwise_not(thresh)
         # ret3, otsu_thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        # otsu_mask = cv.bitwise_not(thresh)
         contours, hierarchy = cv.findContours(edge, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         l, hr, hc = hierarchy.shape
         area = []
@@ -54,17 +56,17 @@ class Contours:
             X, Y, W, H = cv.boundingRect(cont)
             area.append(W*H)
         index = area.index(max(area))
-        # rect = cv.minAreaRect(contours[index])
-        # box = cv.boxPoints(rect)
-        # box = np.int0(box)
-        # # print(box)
-        # cv.drawContours(roi2, [box], -1, (0, 0, 255), 1)
+        rect = cv.minAreaRect(contours[index])
+        box = cv.boxPoints(rect)
+        box = np.int0(box)
+        # # # print(box)
+        cv.drawContours(roi2, [box], -1, (0, 0, 255), 1)
         # [vx, vy, x, y] = cv.fitLine(cont, cv.DIST_L2, 0, 0.01, 0.01)
-        # lefty = int((-x * vy / vx) + y)
-        # righty = int(((189 - x) * vy / vx) + y)
-        # cv.line(roi2, (189 - 1, righty), (0, lefty), (0, 255, 0), 2)
-
-        cv.drawContours(roi2, contours, index, (0, 0, 255), 1)
+        # # lefty = int((-x * vy / vx) + y)
+        # # righty = int(((189 - x) * vy / vx) + y)
+        # # cv.line(roi2, (189 - 1, righty), (0, lefty), (0, 255, 0), 2)
+        #
+        cv.drawContours(roi2, contours, index, (255, 255, 0), 1)
         im2 = cv.resize(roi2, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
         return im2
 

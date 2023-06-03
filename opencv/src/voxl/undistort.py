@@ -8,7 +8,7 @@ class Undistort:
         data = np.load("tracking_camera_intrinsic_data.npz")
         mtx = data['camera_matrix']
         dist = data['distortion_coefficient']
-        cap = cv.VideoCapture("tracking.mp4")
+        cap = cv.VideoCapture("tracking3.mp4")
         if not cap.isOpened():
             print("Can't open video file")
             exit()
