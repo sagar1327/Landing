@@ -1,6 +1,5 @@
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 class Contours:
@@ -8,7 +7,7 @@ class Contours:
         data = np.load("tracking_camera_intrinsic_data.npz")
         mtx = data['camera_matrix']
         dist = data['distortion_coefficient']
-        cap = cv.VideoCapture("tracking1.mp4")
+        cap = cv.VideoCapture("tracking_05_06_23.mp4")
         if not cap.isOpened():
             print("Can't open video file")
             exit()
@@ -34,40 +33,58 @@ class Contours:
     def cnt(self):
         im2 = self.dst
         rows, column, channel = im2.shape
-        roi2 = im2[60:rows, 16:204]
-        gray = cv.cvtColor(roi2, cv.COLOR_BGR2GRAY)
+        # circle = cv.circle(im2, (int(column / 2) - 9, rows + 20), 70, (30, 200, 140), -5)
+        # circle_gray = cv.cvtColor(circle, cv.COLOR_BGR2GRAY)
+        rx = int(column / 2) - 9
+        ry = rows + 25
+        n = 0
+        # for i in range(column):
+        #     for j in range(rows):
+        #         if np.sqrt((rx-i)**2 + (ry-j)**2) > 80:
+        #             im2[j, i] = [121, 121, 121]
+        #
+        roi = im2[60:rows, 84:144]
+        gray = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
         blur = cv.GaussianBlur(gray, (5, 5), 0)
-        edge = cv.Canny(blur, 30, 255)
-        # ret2, thresh = cv.threshold(gray, 35, 255, cv.THRESH_BINARY)
-        # mask = cv.bitwise_not(thresh)
-        # img_fg = cv.add(edge, mask)
+        ret3, otsu_thresh = cv.threshold(blur, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        otsu_mask = cv.bitwise_not(otsu_thresh)
+        # contours, hierarchy = cv.findContours(otsu_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        # cnt = contours[0]
+        # rect = cv.minAreaRect(cnt)
+        # box = cv.boxPoints(rect)
+        # box = np.int0(box)
+        # print(box)
+        # cv.drawContours(roi, [box], -1, (0, 0, 255), 1)
+        # area = cv.contourArea(contours[0])
+        # l, hr, hc = hierarchy.shape
+        # area = []
+        # # print(hierarchy)
         #
-        # adap_thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 19, 6)
-        # adap_mask = cv.bitwise_not(thresh)
-        # ret3, otsu_thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-        # otsu_mask = cv.bitwise_not(thresh)
-        contours, hierarchy = cv.findContours(edge, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        l, hr, hc = hierarchy.shape
-        area = []
-        # print(hierarchy)
+        # for i in range(hr):
+        #     cont = contours[i]
+        #     X, Y, W, H = cv.boundingRect(cont)
+        #     area.append(W*H)
+        # index = area.index(max(area))
+        # cnt = contours[index]
+        # leftmost = tuple(cnt[cnt[:, :, 0].argmin()][0])
+        # rightmost = tuple(cnt[cnt[:, :, 0].argmax()][0])
+        #
+        # if 63 <= cnt[cnt[:, :, 1]][0] <= 68:
+        #     print()
+        # if 0 <= leftmost[0] <= 5 and 183 <= rightmost[0] <= 188:
+        #     rect = cv.minAreaRect(cnt)
+        #     box = cv.boxPoints(rect)
+        #     box = np.int0(box)
+        #     # # # print(box)
+        #     cv.drawContours(roi2, [box], -1, (0, 0, 255), 1)
+        #     # [vx, vy, x, y] = cv.fitLine(cont, cv.DIST_L2, 0, 0.01, 0.01)
+        #     # # lefty = int((-x * vy / vx) + y)
+        #     # # righty = int(((189 - x) * vy / vx) + y)
+        #     # # cv.line(roi2, (189 - 1, righty), (0, lefty), (0, 255, 0), 2)
+        #     #
+        # cv.drawContours(roi, contours, 0, (255, 0, 0), 1)
 
-        for i in range(hr):
-            cont = contours[i]
-            X, Y, W, H = cv.boundingRect(cont)
-            area.append(W*H)
-        index = area.index(max(area))
-        rect = cv.minAreaRect(contours[index])
-        box = cv.boxPoints(rect)
-        box = np.int0(box)
-        # # # print(box)
-        cv.drawContours(roi2, [box], -1, (0, 0, 255), 1)
-        # [vx, vy, x, y] = cv.fitLine(cont, cv.DIST_L2, 0, 0.01, 0.01)
-        # # lefty = int((-x * vy / vx) + y)
-        # # righty = int(((189 - x) * vy / vx) + y)
-        # # cv.line(roi2, (189 - 1, righty), (0, lefty), (0, 255, 0), 2)
-        #
-        cv.drawContours(roi2, contours, index, (255, 255, 0), 1)
-        im2 = cv.resize(roi2, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
+        im2 = cv.resize(otsu_mask, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
         return im2
 
         # images = [img, gray, blur, edge]
