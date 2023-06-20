@@ -5,7 +5,7 @@
 <!-- =================================================================================== -->
 <robot name="first_robot">
   <!--A URDF (Unified Robotic Description Format) file must include the first xml version and start with a robot name.
-If you are using xacro (xml+micro) to reduce the script length then, ti must include the xml name space "xacro"
+If you are using xacro (xml+micro) to reduce the script length then, it must include the xml name space "xacro"
 represented by "xmlns:xacro". http://wiki.ros.org/urdf-->
   <!--Pre-defining material properties-->
   <material name="green">
@@ -33,7 +33,7 @@ with the surface. It's a good practice to define collision geometry for every li
     <!--inertial tag is must for simulation env.-->
     <inertial>
       <mass value="3.0"/>
-      <inertia ixx="0.0225" ixy="0.0" ixz="0.0" iyy="0.005625" iyz="0.0" izz="0.028125"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.0225" iyz="0.0" izz="0.0325"/>
     </inertial>
   </link>
   <!--Always define the body to psuedo link joint as fixed-->

@@ -6,6 +6,7 @@
   <arg name="gui" default="true"/>
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
+  <arg name="rvizconfig" default="$(find first_robot)/rviz/multi.rviz"/>
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -48,6 +49,9 @@
       <param name="default_topic" value="/robot1/wheel_controller/cmd_vel"/>
   </node>
 
+  <node name="static_publisher1" pkg="tf" type="static_transform_publisher" args="-1.5 2 0 0 0 -0.7071068 0.7071068 world robot2/base_link2 100"/>
+  <node name="static_publisher2" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 1 world robot1/base_link1 100"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" respawn="false" output="screen"/>
   <node name="r1tf_broadcaser" pkg="first_robot" type="tf_broadcaster" output="screen" args="robot1"/>
   <node name="r2tf_broadcaser" pkg="first_robot" type="tf_broadcaster" output="screen" args="robot2"/>
   <node name="listener" pkg="first_robot" type="tf_listener" output="screen"/>
