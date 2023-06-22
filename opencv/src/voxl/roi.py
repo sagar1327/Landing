@@ -8,7 +8,7 @@ class Contours:
         data = np.load("tracking_camera_intrinsic_data.npz")
         self.mtx = data['camera_matrix']
         self.dist = data['distortion_coefficient']
-        self.cap = cv.VideoCapture("tracking_05_06_23.mp4")
+        self.cap = cv.VideoCapture("takeoff.mp4")
         if not self.cap.isOpened():
             print("Can't open video file")
             exit()
@@ -105,18 +105,30 @@ class Contours:
             matches = bf.knnMatch(old_des, new_des, k=2)
 
             # Apply ratio test
-            good = []
+            old_good = []
+            new_good = []
             for m, n in matches:
                 if m.distance < 0.4 * n.distance:
-                    good.append([m])
+                    old_good.append([m])
+                    new_good.append([n])
 
             # cv.drawMatchesKnn expects list of lists as matches.
-            img3 = cv.drawMatchesKnn(old_un_frame, old_kp, new_un_frame, new_kp, good, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            img3 = cv.drawMatchesKnn(old_un_frame, old_kp, new_un_frame, new_kp, old_good, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
             # old_un_frame = new_un_frame.copy()
             # old_kp = new_kp
             # old_des = new_des
             # plt.imshow(img3), plt.show()
-            print(old_des[0])
+            old_pts = np.float32([kp.pt for kp in old_kp]).reshape(-1, 1, 2)
+            new_pts = np.float32([kp.pt for kp in new_kp]).reshape(-1, 1, 2)
+            old_matched_pt = np.zeros((len(old_good), 2))
+            new_matched_pt = np.zeros((len(new_good), 2))
+            for i in range(len(old_good)):
+                index1 = old_good[i][0].queryIdx
+                # old_matched_pt[i, :] = old_pts[index1][0]
+            for i in range(len(new_good)):
+                index2 = new_good[i][0].queryIdx
+                # new_matched_pt[i, :] = new_pts[index2][0]
+            print("{} and {}".format(index1, index2))
 
             img3 = cv.resize(img3, None, fx=2, fy=2, interpolation=cv.INTER_AREA)
             cv.imshow("Display", img3)
