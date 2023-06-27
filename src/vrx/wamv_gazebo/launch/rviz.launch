@@ -1,0 +1,14 @@
+<launch>
+
+  <arg name="rvizconfig" default="$(find wamv_gazebo)/rviz/wamv.rviz" />
+
+  <group ns="wamv">
+    <arg name="model" value="$(find wamv_gazebo)/urdf/wamv_gazebo.urdf.xacro"/>
+    <param name="robot_description" command="$(find xacro)/xacro $(arg model)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true" respawn="false"/>
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="screen" required="true" respawn="false"/>
+  </group>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+
+</launch>
