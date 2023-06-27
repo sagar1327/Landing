@@ -110,7 +110,7 @@ class Contours:
             for m, n in matches:
                 if m.distance < 0.4 * n.distance:
                     old_good.append([m])
-                    new_good.append([n])
+                    # new_good.append([n])
 
             # cv.drawMatchesKnn expects list of lists as matches.
             img3 = cv.drawMatchesKnn(old_un_frame, old_kp, new_un_frame, new_kp, old_good, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
@@ -119,16 +119,16 @@ class Contours:
             # old_des = new_des
             # plt.imshow(img3), plt.show()
             old_pts = np.float32([kp.pt for kp in old_kp]).reshape(-1, 1, 2)
-            new_pts = np.float32([kp.pt for kp in new_kp]).reshape(-1, 1, 2)
+            # new_pts = np.float32([kp.pt for kp in new_kp]).reshape(-1, 1, 2)
             old_matched_pt = np.zeros((len(old_good), 2))
             new_matched_pt = np.zeros((len(new_good), 2))
             for i in range(len(old_good)):
                 index1 = old_good[i][0].queryIdx
-                # old_matched_pt[i, :] = old_pts[index1][0]
-            for i in range(len(new_good)):
-                index2 = new_good[i][0].queryIdx
-                # new_matched_pt[i, :] = new_pts[index2][0]
-            print("{} and {}".format(index1, index2))
+                old_matched_pt[i, :] = old_pts[index1][0]
+            # for i in range(len(new_good)):
+            #     index2 = new_good[i][0].queryIdx
+            #     # new_matched_pt[i, :] = new_pts[index2][0]
+            print(old_matched_pt)
 
             img3 = cv.resize(img3, None, fx=2, fy=2, interpolation=cv.INTER_AREA)
             cv.imshow("Display", img3)
