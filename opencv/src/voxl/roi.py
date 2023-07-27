@@ -8,7 +8,7 @@ class Contours:
         data = np.load("tracking_camera_intrinsic_data.npz")
         self.mtx = data['camera_matrix']
         self.dist = data['distortion_coefficient']
-        self.cap = cv.VideoCapture("takeoff.mp4")
+        self.cap = cv.VideoCapture("whiteboard.mp4")
         if not self.cap.isOpened():
             print("Can't open video file")
             exit()
@@ -43,7 +43,7 @@ class Contours:
         while True:
             ret, frame2 = self.cap.read()
             if not ret:
-                print("Did the video end?")
+                print("Video end.")
                 exit()
             un_frame2 = self.undistort(frame2)
             meth = ['cv.TM_CCOEFF', 'cv.TM_CCOEFF_NORMED', 'cv.TM_CCORR',
@@ -80,11 +80,6 @@ class Contours:
         sift = cv.SIFT_create()
         old_kp, old_des = sift.detectAndCompute(old_closing, None)
 
-        # ORB (Oriented FAST and Rotated BRIEF)
-        # orb = cv.ORB_create()
-        # old_kp = orb.detect(old_closing, None)
-        # old_kp, old_des = orb.compute(old_closing, old_kp)
-
         while True:
             ret, new_frame = self.cap.read()
             if not ret:
@@ -97,8 +92,6 @@ class Contours:
             kernel = np.ones((7, 7), np.uint8)
             new_closing = cv.morphologyEx(new_otsu_mask, cv.MORPH_CLOSE, kernel)
             new_kp, new_des = sift.detectAndCompute(new_closing, None)
-            # new_kp = orb.detect(new_closing, None)
-            # new_kp, new_des = orb.compute(new_closing, new_kp)
 
             # BFMatcher with default params
             bf = cv.BFMatcher()
@@ -106,29 +99,21 @@ class Contours:
 
             # Apply ratio test
             old_good = []
-            new_good = []
             for m, n in matches:
                 if m.distance < 0.4 * n.distance:
                     old_good.append([m])
-                    # new_good.append([n])
 
             # cv.drawMatchesKnn expects list of lists as matches.
             img3 = cv.drawMatchesKnn(old_un_frame, old_kp, new_un_frame, new_kp, old_good, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-            # old_un_frame = new_un_frame.copy()
-            # old_kp = new_kp
-            # old_des = new_des
-            # plt.imshow(img3), plt.show()
+            old_un_frame = new_un_frame.copy()
+            old_kp = new_kp
+            old_des = new_des
+
             old_pts = np.float32([kp.pt for kp in old_kp]).reshape(-1, 1, 2)
-            # new_pts = np.float32([kp.pt for kp in new_kp]).reshape(-1, 1, 2)
             old_matched_pt = np.zeros((len(old_good), 2))
-            new_matched_pt = np.zeros((len(new_good), 2))
             for i in range(len(old_good)):
                 index1 = old_good[i][0].queryIdx
                 old_matched_pt[i, :] = old_pts[index1][0]
-            # for i in range(len(new_good)):
-            #     index2 = new_good[i][0].queryIdx
-            #     # new_matched_pt[i, :] = new_pts[index2][0]
-            print(old_matched_pt)
 
             img3 = cv.resize(img3, None, fx=2, fy=2, interpolation=cv.INTER_AREA)
             cv.imshow("Display", img3)
@@ -136,11 +121,80 @@ class Contours:
                 break
         cv.destroyAllWindows()
 
+    def contour(self):
+        while True:
+            ret, frame = self.cap.read()
+            if not ret:
+                print("Video ended.")
+                exit()
+            un_frame = self.undistort(frame)
+            gray = cv.cvtColor(un_frame, cv.COLOR_BGR2GRAY)
+            ret, otsu_thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+            otsu_mask = cv.bitwise_not(otsu_thresh)
+            row, column = otsu_mask.shape
+            corners = cv.goodFeaturesToTrack(otsu_mask, 25, 0.01, 10)
+            corners = np.int0(corners)
+
+            for i in corners:
+                x, y = i.ravel()
+                # print("x: {} and y: {}".format(x, y))
+                cv.circle(un_frame, (x, y), 3, 255, -1)
+
+            # contours, hierarchy = cv.findContours(otsu_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+            # cnt = contours[1]
+            # rect = cv.minAreaRect(cnt)
+            # box = cv.boxPoints(rect)
+            # box = np.int0(box)
+            # print(box)
+            # cv.drawContours(roi, [box], -1, (0, 0, 255), 1)
+            # area = cv.contourArea(contours[0])
+            # l, hr, hc = hierarchy.shape
+            # area = []
+            # print(contours)
+            #
+            # for i in range(hr):
+            #     cont = contours[i]
+            #     X, Y, W, H = cv.boundingRect(cont)
+            #     area.append(W*H)
+            # index = area.index(max(area))
+            # cnt = contours[index]
+            # leftmost = tuple(cnt[cnt[:, :, 0].argmin()][0])
+            # rightmost = tuple(cnt[cnt[:, :, 0].argmax()][0])
+            #
+            # if 63 <= cnt[cnt[:, :, 1]][0] <= 68:
+            #     print()
+            # if 0 <= leftmost[0] <= 5 and 183 <= rightmost[0] <= 188:
+            #     rect = cv.minAreaRect(cnt)
+            #     box = cv.boxPoints(rect)
+            #     box = np.int0(box)
+            #     # # # print(box)
+            #     cv.drawContours(roi2, [box], -1, (0, 0, 255), 1)
+            #     # [vx, vy, x, y] = cv.fitLine(cont, cv.DIST_L2, 0, 0.01, 0.01)
+            #     # # lefty = int((-x * vy / vx) + y)
+            #     # # righty = int(((189 - x) * vy / vx) + y)
+            #     # # cv.line(roi2, (189 - 1, righty), (0, lefty), (0, 255, 0), 2)
+            #     #
+            # cv.drawContours(un_frame, contours, -1, (255, 0, 0), 1)
+
+            im2 = cv.resize(un_frame, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
+
+            # images = [img, gray, blur, edge]
+            # for i in range(4):
+            #     plt.subplot(2, 2, i + 1)
+            #     im = cv.cvtColor(images[i], cv.COLOR_BGR2RGB)
+            #     plt.imshow(im)
+            # plt.show()
+            cv.imshow("Display", im2)
+            if cv.waitKey(0) == ord('q'):
+                break
+        cv.destroyAllWindows()
+
 
 def main():
     ct = Contours()
+    # ct.find_obj()
     # ct.temp_matching()
-    ct.find_obj()
+    ct.contour()
 
 
 if __name__ == "__main__":

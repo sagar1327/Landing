@@ -11,7 +11,7 @@ objp[:, :2] = np.mgrid[0:8, 0:5].T.reshape(-1, 2)
 objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane
 # Image path and listing all the images
-img_path = '/home/sagar/ROS/src/ros_bag/*.jpg'
+img_path = '/home/sagar/ROS/src/ros_bag/images/tracking_camera/*.jpg'
 images = glob.glob(img_path)
 for fname in images:
     img = cv.imread(fname)
@@ -26,7 +26,7 @@ for fname in images:
         # Draw and display the corners
         cv.drawChessboardCorners(img, (8, 5), corners2, ret)
         cv.imshow('img', img)
-        cv.waitKey(10)
+        cv.waitKey(500)
 cv.destroyAllWindows()
 # Obtaining camera matrix and distortion coefficients
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)

@@ -8,7 +8,7 @@ class Undistort:
         data = np.load("tracking_camera_intrinsic_data.npz")
         mtx = data['camera_matrix']
         dist = data['distortion_coefficient']
-        cap = cv.VideoCapture("tracking3.mp4")
+        cap = cv.VideoCapture("chessboard.mp4")
         if not cap.isOpened():
             print("Can't open video file")
             exit()
@@ -31,7 +31,7 @@ class Undistort:
             if cv.waitKey(0) == ord('q'):
                 break
             elif cv.waitKey(0) == ord('s'):
-                cv.imwrite('calibresult.png', dst)
+                cv.imwrite('undistort_img.png', dst)
                 break
         cv.destroyAllWindows()
 
