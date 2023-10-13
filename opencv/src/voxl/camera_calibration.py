@@ -26,12 +26,14 @@ for fname in images:
         # Draw and display the corners
         cv.drawChessboardCorners(img, (8, 5), corners2, ret)
         cv.imshow('img', img)
-        cv.waitKey(500)
+        cv.waitKey(1)
+        if cv.waitKey(1) == ord('s'):
+            cv.imwrite('chessboard_calibration.png', img)
 cv.destroyAllWindows()
 # Obtaining camera matrix and distortion coefficients
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 # Test image
-img = cv.imread('frame0151.jpg')
+img = cv.imread('frame0001.1.jpg')
 h,  w = img.shape[:2]
 newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
 # undistort
@@ -40,6 +42,7 @@ dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
 # crop the image
 x, y, w, h = roi
 dst = dst[y:y+h, x:x+w]
-cv.imwrite('undistorted.png', dst)
+dst = cv.resize(dst, None, fx=2.623, fy=3.75, interpolation=cv.INTER_AREA)
+cv.imwrite('0.5.png', dst)
 # Saving the camera matrix and distortion coefficients
 np.savez('tracking_camera_intrinsic_data', camera_matrix=mtx, distortion_coefficient=dist)

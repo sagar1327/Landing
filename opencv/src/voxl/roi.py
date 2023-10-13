@@ -22,6 +22,7 @@ class Contours:
         # crop the image
         x, y, w, h = roi
         dst = dst[y:y + h, x:x + w]
+        dst = cv.resize(dst, None, fx=2.62295, fy=3.75, interpolation=cv.INTER_AREA)
         return dst
 
     def temp_matching(self):
@@ -115,9 +116,12 @@ class Contours:
                 index1 = old_good[i][0].queryIdx
                 old_matched_pt[i, :] = old_pts[index1][0]
 
-            img3 = cv.resize(img3, None, fx=2, fy=2, interpolation=cv.INTER_AREA)
+            # img3 = cv.resize(img3, None, fx=2, fy=2, interpolation=cv.INTER_AREA)
             cv.imshow("Display", img3)
             if cv.waitKey(0) == ord('q'):
+                break
+            elif cv.waitKey(0) == ord('s'):
+                cv.imwrite("feature 3.png", img3)
                 break
         cv.destroyAllWindows()
 
@@ -132,7 +136,7 @@ class Contours:
             ret, otsu_thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
             otsu_mask = cv.bitwise_not(otsu_thresh)
             row, column = otsu_mask.shape
-            corners = cv.goodFeaturesToTrack(otsu_mask, 25, 0.01, 10)
+            corners = cv.goodFeaturesToTrack(otsu_mask, 95, 0.1, 10)
             corners = np.int0(corners)
 
             for i in corners:
@@ -176,25 +180,26 @@ class Contours:
             #     #
             # cv.drawContours(un_frame, contours, -1, (255, 0, 0), 1)
 
-            im2 = cv.resize(un_frame, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
-
             # images = [img, gray, blur, edge]
             # for i in range(4):
             #     plt.subplot(2, 2, i + 1)
             #     im = cv.cvtColor(images[i], cv.COLOR_BGR2RGB)
             #     plt.imshow(im)
             # plt.show()
-            cv.imshow("Display", im2)
+            cv.imshow("Display", un_frame)
             if cv.waitKey(0) == ord('q'):
+                break
+            elif cv.waitKey(0) == ord('s'):
+                cv.imwrite("feature 3.png",un_frame)
                 break
         cv.destroyAllWindows()
 
 
 def main():
     ct = Contours()
-    # ct.find_obj()
+    ct.find_obj()
     # ct.temp_matching()
-    ct.contour()
+    # ct.contour()
 
 
 if __name__ == "__main__":

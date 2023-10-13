@@ -8,6 +8,7 @@ class Undistort:
         data = np.load("tracking_camera_intrinsic_data.npz")
         mtx = data['camera_matrix']
         dist = data['distortion_coefficient']
+        # img = cv.imread("frame0198.jpg")
         cap = cv.VideoCapture("chessboard.mp4")
         if not cap.isOpened():
             print("Can't open video file")
@@ -25,7 +26,7 @@ class Undistort:
             # crop the image
             x, y, w, h = roi
             dst = dst[y:y + h, x:x + w]
-            dst = cv.resize(dst, None, fx=5, fy=5, interpolation=cv.INTER_AREA)
+            dst = cv.resize(dst, None, fx=2.623, fy=3.75, interpolation=cv.INTER_AREA)
 
             cv.imshow('Display', dst)
             if cv.waitKey(0) == ord('q'):

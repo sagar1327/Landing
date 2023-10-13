@@ -1,8 +1,8 @@
 #!/home/sagar/opencv_ws/envs/bin/python
 
 import cv2 as cv
-# url = "http://192.168.227.107:8080/video"
-cap = cv.VideoCapture("shadows.mp4")
+url = "http://10.187.121.61:8080/video"
+cap = cv.VideoCapture(url)
 if not cap.isOpened():
     print("Cannot open camera")
     exit()
