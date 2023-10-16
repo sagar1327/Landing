@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="rvizconfig" default="$(find first_robot)/rviz/robot1.rviz" />
+  <arg name="rvizconfig" default="$(find first_robot)/rviz/robot.rviz" />
 
   <group ns="robot1">
     <arg name="model" value="$(find first_robot)/xacro/first_robot/first_robot.xacro"/>
