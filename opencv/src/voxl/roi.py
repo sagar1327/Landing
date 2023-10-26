@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-class Contours:
+class Features:
     def __init__(self):
         data = np.load("tracking_camera_intrinsic_data.npz")
         self.mtx = data['camera_matrix']
@@ -22,6 +22,8 @@ class Contours:
         # crop the image
         x, y, w, h = roi
         dst = dst[y:y + h, x:x + w]
+        # The shape size of the original image is 640x480, and the size of undistorted image is 244x128.
+        # The Aspect ratio needs to be fixed
         dst = cv.resize(dst, None, fx=2.62295, fy=3.75, interpolation=cv.INTER_AREA)
         return dst
 
@@ -196,7 +198,7 @@ class Contours:
 
 
 def main():
-    ct = Contours()
+    ct = Features()
     ct.find_obj()
     # ct.temp_matching()
     # ct.contour()

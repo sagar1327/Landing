@@ -1,3 +1,5 @@
+#!/bin/bash
+
 import cv2 as cv
 import numpy as np
 
@@ -19,7 +21,7 @@ class Contours:
         data = np.load("tracking_camera_intrinsic_data.npz")
         self.mtx = data['camera_matrix']
         self.dist = data['distortion_coefficient']
-        self.cap = cv.VideoCapture("tracking_05_06_23.mp4")
+        self.cap = cv.VideoCapture("whiteboard.mp4")
         if not self.cap.isOpened():
             print("Can't open video file")
             exit()

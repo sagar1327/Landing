@@ -1,4 +1,4 @@
-#!/home/sagar/ROS/opencv/env/bin/python
+#!/bin/bash
 
 import cv2 as cv
 import numpy as np
