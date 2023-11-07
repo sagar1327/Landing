@@ -55,14 +55,19 @@ class Features:
                     cx = M['m10'] / M['m00']
                     cy = M['m01'] / M['m00']
                     # Range of cx and cy
-                    if 100 >= int(cy) or int(cy) >= 240 or 290 >= int(cx) or int(cx) >= 305:
+                    if 100 <= cy <= 240 and 100 <= cx <= 310:
+                        cv.drawContours(un_frame,contours,i,[0, 255, 0], 2)
                         # deleting unwanted hierarchy
                         hierarchy = np.delete(hierarchy, i-count, 1)
                         count += 1
 
             cv.imshow("Display", un_frame)
-            if cv.waitKey(0) == ord('q'):
+            if cv.waitKey(0) == ord('s'):
+                cv.imwrite("F_3.png", un_frame)
                 break
+            elif cv.waitKey(0) == ord('q'):
+                break
+
         cv.destroyAllWindows()
 
 
