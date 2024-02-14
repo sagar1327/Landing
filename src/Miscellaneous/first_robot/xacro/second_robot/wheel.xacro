@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="wheel">
+
+  <xacro:property name="radius" value="0.04"/>
+  <xacro:property name="thickness" value="0.02"/>
+
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+<!--xacro:macro is a type of prefined parameter which can be used to avoid 
+repeatition to reduce the script length-->
+  <xacro:macro name="default_wheel_inertial">
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.00016" ixy="0.0" ixz="0.0" iyy="0.000087" iyz="0.0" izz="0.000087"/>
+    </inertial>
+  </xacro:macro>
+
+<!--Pre-defining the wheel macro-->
+  <xacro:macro name="wheel" params="prefix suffix reflect scope"> 
+    <link name="${prefix}_${suffix}_wheel">
+      <visual>
+        <geometry>
+            <cylinder radius="${radius}" length="${thickness}"/>
+        </geometry>
+        <material name="black"/>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      </visual>
+      <collision>
+        <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 0.0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${thickness}"/>
+        </geometry>
+      </collision>
+      <xacro:default_wheel_inertial/>
+    </link>
+
+    <joint name="${prefix}_${suffix}_wheel_joint" type="continuous">
+      <axis xyz="0.0 1.0 0.0"/>
+      <parent link="base_link2"/>
+      <child link="${prefix}_${suffix}_wheel"/>
+      <origin xyz="${scope*0.11} ${reflect*0.08} -0.05" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+<!--gazebo tag is defined for gazebo environment. It is not neccessary for rviz. 
+gazebo doesn't use the material defined for rviz therefore a different material  is also included.-->
+    <gazebo reference="${prefix}_${suffix}_wheel">
+      <mu1 value="200.0"/>
+      <mu2 value="100.0"/>
+      <kp value="10000000.0"/>
+      <kd value="1.0"/>
+      <material>Gazebo/Black</material>
+    </gazebo>
+
+<!--The transmission element is an extension to the URDF robot description model 
+that is used to describe the relationship between an actuator and a joint. http://wiki.ros.org/urdf/XML/Transmission-->
+    <transmission name="${prefix}_${suffix}_wheel_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}_${suffix}_wheel_joint">
+        <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}_${suffix}_wheel_motor">
+        <mechanicalReduction>1.0</mechanicalReduction>
+      </actuator>
+    </transmission>  
+  </xacro:macro>
+</robot>
