@@ -1,0 +1,3 @@
+[submodule "src/artag"]
+	path = src/artag
+	url = https://github.com/mikaelarguedas/gazebo_models.git
