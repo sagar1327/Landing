@@ -1,2 +1,0 @@
-offboard_py
--DCATKIN_DEVEL_PREFIX=/home/sagar/ROS/devel -DCMAKE_INSTALL_PREFIX=/home/sagar/ROS/install -DCATKIN_WHITELIST_PACKAGES=offboard_py -G Unix Makefiles
