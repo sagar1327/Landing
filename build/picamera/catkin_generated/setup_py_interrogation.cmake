@@ -1,0 +1,7 @@
+set(picamera_SETUP_PY_SETUP_MODULE "distutils.core")
+set(picamera_SETUP_PY_VERSION "0.0.0")
+set(picamera_SETUP_PY_SCRIPTS "")
+set(picamera_SETUP_PY_PACKAGES "picamera")
+set(picamera_SETUP_PY_PACKAGE_DIRS "src/picamera")
+set(picamera_SETUP_PY_MODULES "")
+set(picamera_SETUP_PY_MODULE_DIRS "")

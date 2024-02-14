@@ -1,0 +1,8 @@
+prefix=/home/sagar/ROS/devel
+
+Name: picamera
+Description: Description of picamera
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

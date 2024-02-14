@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<node pkg="offboard_py" type="takeoff.py" name="takeoff" required="true" output="screen" />
+	<node pkg="offboard_py" type="monitor_state.py" name="monitor_state" required="true" output="screen" />
+</launch>
