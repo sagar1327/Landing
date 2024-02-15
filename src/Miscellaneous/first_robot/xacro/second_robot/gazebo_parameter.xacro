@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="gazebo_parameter2">
-    <gazebo reference="base_link2">
-        <material>Gazebo/Green</material>
-    </gazebo>
-    <gazebo reference="head2">
-        <material>Gazebo/White</material>
-    </gazebo>
-</robot>
