@@ -1,6 +1,6 @@
 # Pre-Requisites
-1. **Mavlink:** Clone the updated master branch from - https://github.com/mavlink/mavlink
-2. **Mavros:** Clone the updated master branch from - https://github.com/mavlink/mavros
+1. **Mavlink:** sudo apt-get install ros-${ROS_DISTRO}-mavros ros-${ROS_DISTRO}-mavros-extras ros-${ROS_DISTRO}-mavros-msgs
+2. **Mavros:** sudo apt-get install ros-${ROS_DISTRO}-mavlink
 3. **VRX:** If not already, clone the gazebo_classic branch from - https://github.com/osrf/vrx/tree/gazebo_classic
 4. **RobotX:** Clone the develop/master branch and follow the pre-requisites stes as mentioned in the README to build the packge.
 5. **PX4**:
@@ -10,7 +10,7 @@ git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 ```
 Add following into .bashrc file
 ```
-source ~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/PX4-Autopilot ~/PX4-Autopilot/build/px4_sitl_default
+source ~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/catkin_ws/src/PX4-Autopilot ~/catkin_ws/src/PX4-Autopilot/build/px4_sitl_default
 export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot:$ROS_PACKAGE_PATH"
 export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic:$ROS_PACKAGE_PATH"
 export GAZEBO_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/gazebo-9/plugins:$GAZEBO_PLUGIN_PATH"
