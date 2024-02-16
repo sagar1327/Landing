@@ -15,6 +15,14 @@ export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot:$ROS_PACKAGE_PATH"
 export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic:$ROS_PACKAGE_PATH"
 export GAZEBO_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/gazebo-9/plugins:$GAZEBO_PLUGIN_PATH"
 ```
+# Building the package
+```
+cd ~/catkin_ws/src
+git clone https://github.com/sagar1327/ROS.git -b robotx
+cd ..
+rosdep install --from-path src --rosdistro ${ROS_DISTRO} -i -y
+catkin_make --only-pkg-with-dep offboard_py
+```
 
 # Adding a UAV model in VRX environment
 ```
