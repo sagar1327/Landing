@@ -5,14 +5,15 @@
 4. **RobotX:** Clone the develop/master branch and follow the pre-requisites stes as mentioned in the README to build the packge.
 5. **PX4**:
 ```
-cd ~/catkin_ws/src
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
+cd PX4-Autopilot
+DONT_RUN=1 make px4_sitl_default gazebo-classic
 ```
-Add following into .bashrc file
+Note: Clone and build in your $HOME directory.Add following into .bashrc file:
 ```
-source ~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/catkin_ws/src/PX4-Autopilot ~/catkin_ws/src/PX4-Autopilot/build/px4_sitl_default
-export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot:$ROS_PACKAGE_PATH"
-export ROS_PACKAGE_PATH="~/catkin_ws/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic:$ROS_PACKAGE_PATH"
+source ~/PX4-Autopilot/Tools/simulation/gazebo-classic/setup_gazebo.bash ~/PX4-Autopilot ~/PX4-Autopilot/build/px4_sitl_default
+export ROS_PACKAGE_PATH="$HOME/PX4-Autopilot:$ROS_PACKAGE_PATH"
+export ROS_PACKAGE_PATH="$HOME/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic:$ROS_PACKAGE_PATH"
 export GAZEBO_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/gazebo-9/plugins:$GAZEBO_PLUGIN_PATH"
 ```
 # Building the package
