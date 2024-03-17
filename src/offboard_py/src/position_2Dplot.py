@@ -1,3 +1,6 @@
+#!/bin/env python3
+
+import os
 import json
 from matplotlib import pyplot as plt
 
@@ -35,12 +38,13 @@ class Position2DPlots:
             ax.plot(xvalues[self.label[i]], yvalues[self.label[i]], label=self.label[i])
 
         ax.legend()
-        ax.axis('equal')
+        # ax.axis('equal')
 
 if __name__ == '__main__':
-    x_file_path = '/home/sagar/ROS/src/offboard_py/src/x_position_030223_15.00.txt'
-    y_file_path = '/home/sagar/ROS/src/offboard_py/src/y_position_030223_15.00.txt'
-    z_file_path = '/home/sagar/ROS/src/offboard_py/src/z_position_030223_15.00.txt'
-    time_file_path = '/home/sagar/ROS/src/offboard_py/src/time_030223_15.00.txt'
+    cwd = os.getcwd()
+    x_file_path = '{}/x_position.txt'.format(cwd)
+    y_file_path = '{}/y_position.txt'.format(cwd)
+    z_file_path = '{}/z_position.txt'.format(cwd)
+    time_file_path = '{}/time.txt'.format(cwd)
 
     Position2DPlots(x_file_path, y_file_path, z_file_path, time_file_path)

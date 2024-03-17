@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import os
 import numpy as np
 import json
 from matplotlib import pyplot as plt
@@ -8,10 +9,11 @@ from matplotlib.animation import FuncAnimation
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix, FluidPressure
-from pygeodesy.geoids import GeoidPGM
+# Module to convert the GPS ellipsoidal height to amsl height
+# from pygeodesy.geoids import GeoidPGM
 
 class Height:
-    NUM_ELEMENTS = 5  # Number of elements in x, y, and z arrays
+    NUM_ELEMENTS = 4  # Number of elements in x, y, and z arrays
 
     def __init__(self):
         self.x_position = [[] for _ in range(self.NUM_ELEMENTS)]
@@ -22,16 +24,16 @@ class Height:
         self.GPS_local_data = Odometry()
         self.odometry = Odometry()
         self.pose_data = PoseStamped()
-        self.GPS_fix_data = NavSatFix()
+        # self.GPS_fix_data = NavSatFix()
         self.pressure_data = FluidPressure()
-        self._egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm', kind=-3)
+        # self._egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm', kind=-3)
         self.initial_pressure_altitude = 0
 
         rospy.init_node("position_estimate", anonymous=True)
         rospy.Subscriber("/mavros/global_position/local", Odometry, callback=self.GPS_local)
         rospy.Subscriber("/mavros/local_position/odom", Odometry, callback=self.Odometry)
         rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback=self.Pose)
-        rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.GPS_fix)
+        # rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.GPS_fix)
         rospy.Subscriber("/mavros/imu/static_pressure", FluidPressure, callback=self.Pressure)
 
         self.setup_plot()
@@ -43,8 +45,8 @@ class Height:
         self.fig2 = plt.figure()
         self.ax1 = self.fig1.add_subplot(1, 1, 1)
         self.ax2 = self.fig2.add_subplot(1, 1, 1)
-        self.lines1 = [self.ax1.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose', 'GPS fix']]
-        self.lines2 = [self.ax2.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose', 'GPS fix', 'Pressure']]
+        self.lines1 = [self.ax1.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose']]
+        self.lines2 = [self.ax2.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose', 'Pressure']]
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
         self.ax1.set_title('Position')
@@ -72,30 +74,30 @@ class Height:
         self.pose_data = msg
         self.update_position_data(2, self.pose_data.pose.position)
 
-    def GPS_fix(self, msg):
-        self.GPS_fix_data = msg
-        lat, long = self.GPS_fix_data.latitude, self.GPS_fix_data.longitude
-        self.x_position[3].append(lat)
-        self.y_position[3].append(long)
-        self.z_position[3].append(self.GPS_fix_data.altitude - self._egm96.height(lat, long))
+    # def GPS_fix(self, msg):
+    #     self.GPS_fix_data = msg
+    #     lat, long = self.GPS_fix_data.latitude, self.GPS_fix_data.longitude
+    #     self.x_position[3].append(lat)
+    #     self.y_position[3].append(long)
+    #     self.z_position[3].append(self.GPS_fix_data.altitude - self._egm96.height(lat, long))
 
-        if np.isnan(self.initial_timestamp[3]):
-            self.initial_timestamp[3] = rospy.Time.now().to_sec()
-        self.timestamps[3].append(rospy.Time.now().to_sec() - self.initial_timestamp[3])
+    #     if np.isnan(self.initial_timestamp[3]):
+    #         self.initial_timestamp[3] = rospy.Time.now().to_sec()
+    #     self.timestamps[3].append(rospy.Time.now().to_sec() - self.initial_timestamp[3])
 
     def Pressure(self, msg):
         self.pressure_data = msg
         Psl = 101325;T0 = 288.16;L = 0.00976;R = 8.314462618;g = 9.80665;M = 0.02896968
         h = (T0/L)*(1 - (self.pressure_data.fluid_pressure/Psl)**((R*L)/(g*M)))
-        self.x_position[4].append(0)
-        self.y_position[4].append(0)
+        self.x_position[3].append(0)
+        self.y_position[3].append(0)
         if self.initial_pressure_altitude == 0:
             self.initial_pressure_altitude = h
-        self.z_position[4].append(h - self.initial_pressure_altitude)
+        self.z_position[3].append(h - self.initial_pressure_altitude)
 
-        if np.isnan(self.initial_timestamp[4]):
-            self.initial_timestamp[4] = rospy.Time.now().to_sec()
-        self.timestamps[4].append(rospy.Time.now().to_sec() - self.initial_timestamp[4])
+        if np.isnan(self.initial_timestamp[3]):
+            self.initial_timestamp[3] = rospy.Time.now().to_sec()
+        self.timestamps[3].append(rospy.Time.now().to_sec() - self.initial_timestamp[3])
         
 
     def update_position_data(self, index, position):
@@ -122,21 +124,22 @@ class Height:
         self.ax2.autoscale_view()
 
     def save_file(self):
+        cwd = os.getcwd()
         xposition_dic = {'GPS local': self.x_position[0], 'Odometry': self.x_position[1], 'Pose': self.x_position[2],
-                         'GPS fix': self.x_position[3], 'Pressure':self.x_position[4]}
+                         'Pressure':self.x_position[3]}
         yposition_dic = {'GPS local': self.y_position[0], 'Odometry': self.y_position[1], 'Pose': self.y_position[2],
-                         'GPS fix': self.y_position[3], 'Pressure':self.y_position[4]}
+                         'Pressure':self.y_position[3]}
         zposition_dic = {'GPS local': self.z_position[0], 'Odometry': self.z_position[1], 'Pose': self.z_position[2],
-                         'GPS fix': self.z_position[3], 'Pressure':self.z_position[4]}
+                         'Pressure':self.z_position[3]}
         time_dic = {'GPS local': self.timestamps[0], 'Odometry': self.timestamps[1], 'Pose': self.timestamps[2],
-                    'GPS fix': self.timestamps[3], 'Pressure':self.timestamps[4]}
-        with open('/home/sagar/ROS/src/offboard_py/src/x_position_030223_15.00.txt', 'w') as file:
+                    'Pressure':self.timestamps[3]}
+        with open('{}/x_position.txt'.format(cwd), 'w') as file:
             file.write(json.dumps(xposition_dic))
-        with open('/home/sagar/ROS/src/offboard_py/src/y_position_030223_15.00.txt', 'w') as file:
+        with open('{}/y_position.txt'.format(cwd), 'w') as file:
             file.write(json.dumps(yposition_dic))
-        with open('/home/sagar/ROS/src/offboard_py/src/z_position_030223_15.00.txt', 'w') as file:
+        with open('{}/z_position.txt'.format(cwd), 'w') as file:
             file.write(json.dumps(zposition_dic))
-        with open('/home/sagar/ROS/src/offboard_py/src/time_030223_15.00.txt', 'w') as file:
+        with open('{}/time.txt'.format(cwd), 'w') as file:
             file.write(json.dumps(time_dic))
 
 
