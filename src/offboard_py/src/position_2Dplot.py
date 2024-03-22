@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-import os
+import argparse
 import json
 from matplotlib import pyplot as plt
 
@@ -41,10 +41,15 @@ class Position2DPlots:
         # ax.axis('equal')
 
 if __name__ == '__main__':
-    cwd = os.getcwd()
-    x_file_path = '{}/x_position.txt'.format(cwd)
-    y_file_path = '{}/y_position.txt'.format(cwd)
-    z_file_path = '{}/z_position.txt'.format(cwd)
-    time_file_path = '{}/time.txt'.format(cwd)
+    path = '/home/sagar/ROS/src/offboard_py/src/logs'
+    parser = argparse.ArgumentParser(description='2D plot.')
+    parser.add_argument('Date', type=str, help='Date of the test. Ex - 030823, March 8th 2023.')
+    parser.add_argument('Time', type=float, help='Time of the test. Ex - 18.15.')
+    args = parser.parse_args()
+
+    x_file_path = '{Path}/Date:{Date}/x_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time)
+    y_file_path = '{Path}/Date:{Date}/y_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time)
+    z_file_path = '{Path}/Date:{Date}/z_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time)
+    time_file_path = '{Path}/Date:{Date}/time_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time)
 
     Position2DPlots(x_file_path, y_file_path, z_file_path, time_file_path)

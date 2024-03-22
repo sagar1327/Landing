@@ -4,6 +4,7 @@ import rospy
 import os
 import numpy as np
 import json
+import argparse
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from geometry_msgs.msg import PoseStamped
@@ -38,7 +39,7 @@ class Height:
 
         self.setup_plot()
 
-        rospy.on_shutdown(self.save_file)
+        # rospy.on_shutdown(self.save_file)
 
     def setup_plot(self):
         self.fig1 = plt.figure()
@@ -124,7 +125,12 @@ class Height:
         self.ax2.autoscale_view()
 
     def save_file(self):
-        cwd = os.getcwd()
+        path = '/home/sagar/ROS/src/offboard_py/src/logs'
+        parser = argparse.ArgumentParser(description='2D plot.')
+        parser.add_argument('Date', type=str, help='Date of the test. Ex - 030823, March 8th 2023.')
+        parser.add_argument('Time', type=float, help='Time of the test. Ex - 18.15.')
+        args = parser.parse_args()
+
         xposition_dic = {'GPS local': self.x_position[0], 'Odometry': self.x_position[1], 'Pose': self.x_position[2],
                          'Pressure':self.x_position[3]}
         yposition_dic = {'GPS local': self.y_position[0], 'Odometry': self.y_position[1], 'Pose': self.y_position[2],
@@ -133,13 +139,14 @@ class Height:
                          'Pressure':self.z_position[3]}
         time_dic = {'GPS local': self.timestamps[0], 'Odometry': self.timestamps[1], 'Pose': self.timestamps[2],
                     'Pressure':self.timestamps[3]}
-        with open('{}/x_position.txt'.format(cwd), 'w') as file:
+        
+        with open('{Path}/Date:{Date}/x_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time), 'w') as file:
             file.write(json.dumps(xposition_dic))
-        with open('{}/y_position.txt'.format(cwd), 'w') as file:
+        with open('{Path}/Date:{Date}/y_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time), 'w') as file:
             file.write(json.dumps(yposition_dic))
-        with open('{}/z_position.txt'.format(cwd), 'w') as file:
+        with open('{Path}/Date:{Date}/z_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time), 'w') as file:
             file.write(json.dumps(zposition_dic))
-        with open('{}/time.txt'.format(cwd), 'w') as file:
+        with open('{Path}/Date:{Date}/time_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time), 'w') as file:
             file.write(json.dumps(time_dic))
 
 
