@@ -2,7 +2,7 @@
 1. **Mavlink:** sudo apt-get install ros-${ROS_DISTRO}-mavros ros-${ROS_DISTRO}-mavros-extras ros-${ROS_DISTRO}-mavros-msgs
 2. **Mavros:** sudo apt-get install ros-${ROS_DISTRO}-mavlink
 3. **VRX:** If not already, clone the gazebo_classic branch from - https://github.com/osrf/vrx/tree/gazebo_classic
-4. **RobotX:** Clone the develop/master branch and follow the pre-requisites stes as mentioned in the README to build the packge.
+4. **RobotX:** Clone the develop/master branch and follow the pre-requisites stes as mentioned in the README of the RobotX repo to build the packges.
 5. **PX4**:
 ```
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
