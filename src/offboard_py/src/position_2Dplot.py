@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 class Position2DPlots:
     def __init__(self, x_file_path, y_file_path, z_file_path, time_file_path):
-        self.label = ['GPS local','Odometry', 'Pose', 'Pressure']
+        self.label = ['GPS local','Odometry', 'Pose', 'Lidar']
         self.line = [[], []]
 
         with open(x_file_path, 'r') as file:

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import NavSatFix, FluidPressure
+from sensor_msgs.msg import NavSatFix, FluidPressure, Range
 # Module to convert the GPS ellipsoidal height to amsl height
 # from pygeodesy.geoids import GeoidPGM
 
@@ -26,16 +26,16 @@ class Height:
         self.odometry = Odometry()
         self.pose_data = PoseStamped()
         # self.GPS_fix_data = NavSatFix()
-        self.pressure_data = FluidPressure()
+        self.lidar_data = Range()
         # self._egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm', kind=-3)
-        self.initial_pressure_altitude = 0
+        # self.initial_pressure_altitude = 0
 
         rospy.init_node("position_estimate", anonymous=True)
         rospy.Subscriber("/mavros/global_position/local", Odometry, callback=self.GPS_local)
         rospy.Subscriber("/mavros/local_position/odom", Odometry, callback=self.Odometry)
         rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback=self.Pose)
         # rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.GPS_fix)
-        rospy.Subscriber("/mavros/imu/static_pressure", FluidPressure, callback=self.Pressure)
+        rospy.Subscriber("/mavros/distance_sensor/hrlv_ez4_pub", Range, callback=self.Lidar)
 
         self.setup_plot()
 
@@ -47,7 +47,7 @@ class Height:
         self.ax1 = self.fig1.add_subplot(1, 1, 1)
         self.ax2 = self.fig2.add_subplot(1, 1, 1)
         self.lines1 = [self.ax1.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose']]
-        self.lines2 = [self.ax2.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose', 'Pressure']]
+        self.lines2 = [self.ax2.plot([], [], label=topic)[0] for topic in ['GPS local', 'Odometry', 'Pose', 'Lidar']]
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
         self.ax1.set_title('Position')
@@ -86,15 +86,15 @@ class Height:
     #         self.initial_timestamp[3] = rospy.Time.now().to_sec()
     #     self.timestamps[3].append(rospy.Time.now().to_sec() - self.initial_timestamp[3])
 
-    def Pressure(self, msg):
-        self.pressure_data = msg
-        Psl = 101325;T0 = 288.16;L = 0.00976;R = 8.314462618;g = 9.80665;M = 0.02896968
-        h = (T0/L)*(1 - (self.pressure_data.fluid_pressure/Psl)**((R*L)/(g*M)))
+    def Lidar(self, msg):
+        self.lidar_data = msg
+        # Psl = 101325;T0 = 288.16;L = 0.00976;R = 8.314462618;g = 9.80665;M = 0.02896968
+        # h = (T0/L)*(1 - (self.pressure_data.fluid_pressure/Psl)**((R*L)/(g*M)))
         self.x_position[3].append(0)
         self.y_position[3].append(0)
-        if self.initial_pressure_altitude == 0:
-            self.initial_pressure_altitude = h
-        self.z_position[3].append(h - self.initial_pressure_altitude)
+        # if self.initial_pressure_altitude == 0:
+        #     self.initial_pressure_altitude = h
+        self.z_position[3].append(self.lidar_data.range)
 
         if np.isnan(self.initial_timestamp[3]):
             self.initial_timestamp[3] = rospy.Time.now().to_sec()
@@ -132,13 +132,13 @@ class Height:
         args = parser.parse_args()
 
         xposition_dic = {'GPS local': self.x_position[0], 'Odometry': self.x_position[1], 'Pose': self.x_position[2],
-                         'Pressure':self.x_position[3]}
+                         'Lidar':self.x_position[3]}
         yposition_dic = {'GPS local': self.y_position[0], 'Odometry': self.y_position[1], 'Pose': self.y_position[2],
-                         'Pressure':self.y_position[3]}
+                         'Lidar':self.y_position[3]}
         zposition_dic = {'GPS local': self.z_position[0], 'Odometry': self.z_position[1], 'Pose': self.z_position[2],
-                         'Pressure':self.z_position[3]}
+                         'Lidar':self.z_position[3]}
         time_dic = {'GPS local': self.timestamps[0], 'Odometry': self.timestamps[1], 'Pose': self.timestamps[2],
-                    'Pressure':self.timestamps[3]}
+                    'Lidar':self.timestamps[3]}
         
         with open('{Path}/Date:{Date}/x_position_{Date}_{Time}.txt'.format(Path=path,Date=args.Date,Time=args.Time), 'w') as file:
             file.write(json.dumps(xposition_dic))
