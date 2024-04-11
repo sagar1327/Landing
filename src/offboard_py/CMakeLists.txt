@@ -191,9 +191,9 @@ target_link_libraries(fractal_detect ${catkin_LIBRARIES})
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(PROGRAMS
    takeoff.py
-   takeoff2.py
    monitor_state.py
    detect_apriltag.py
+   waypoint.py
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
