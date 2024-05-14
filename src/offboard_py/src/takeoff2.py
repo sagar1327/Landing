@@ -5,85 +5,118 @@ import numpy as np
 from geometry_msgs.msg import TwistStamped
 from gazebo_msgs.msg import ModelStates, ModelState
 from tf.transformations import euler_from_quaternion
-
-class PIDController:
-    def __init__(self, kp, ki, kd):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.prev_error = 0.0
-        self.integral = 0.0
-
-    def compute(self, error, dt):
-        self.integral += error * dt
-        derivative = (error - self.prev_error) / dt
-        output = self.kp * error + self.ki * self.integral + self.kd * derivative
-        self.prev_error = error
-        return output
+from sensor_msgs.msg import Image, CompressedImage, NavSatFix
+from cv_bridge import CvBridge
+import apriltag as ar
+import cv2 as cv
 
 class TakeOff():
     def __init__(self):
         rospy.init_node('takeoff_node', anonymous=True)
         self.velocity_pub = rospy.Publisher("mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=100)
-        self.rate = rospy.Rate(30)
-        self.current_vel = TwistStamped()
-        self.current_pose = ModelState()
-        self.wamv_pose = ModelState()
+        self.tag_pub = rospy.Publisher("/artag/rgb/image_raw", Image, queue_size=100)
+        self.rate = rospy.Rate(60)
+        self.final_vel = TwistStamped()
+        self.current_pose = NavSatFix()
+        self.wamv_pose = NavSatFix()
+        self.bridge = CvBridge()
+        self.cv_image = []
+        self.img_msg = Image()
+        self.detector = ar.Detector()
 
-        # Initialize PID controllers
-        self.pid_x = PIDController(kp=0.1, ki=0.01, kd=1.5)
-        self.pid_y = PIDController(kp=0.02, ki=0.01, kd=1.5)
-        self.pid_z = PIDController(kp=1, ki=0.1, kd=0.01)
-        self.pid_yaw = PIDController(kp=0.5, ki=0.01, kd=1.5)
+        self.deltaS = 0.0
+        self.targetAltitude = None
+        self.linear_vel = 0
+        self.yaw_vel = 0
+        self.theta = 0
+        self.final_vel.header.frame_id = 'map'
+        self.final_vel.header.stamp = rospy.Time.now()
 
-        rospy.Subscriber("/gazebo/model_states", ModelStates, self.callback)
+        rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, self.wamv)
+        rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, self.uav)
+        rospy.Subscriber("/iris_downward_depth_camera/camera/rgb/image_raw/compressed", CompressedImage, self.artag)
 
         while not rospy.is_shutdown():
             self.calculate_vel()
-            self.velocity_pub.publish(self.current_vel)
-            rospy.loginfo("\ndrone velocity:\n{}".format(self.current_vel))
+            self.velocity_pub.publish(self.final_vel)
+            self.tag_pub.publish(self.img_msg)
+            rospy.loginfo("\ndrone velocity:\n{}".format(self.final_vel))
             self.rate.sleep()
 
-    def callback(self, msg):
-        if msg.name[22] == "wamv":
-            self.current_pose.pose = msg.pose[23]
-            self.wamv_pose.pose = msg.pose[22]
-        else:
-            self.current_pose.pose = msg.pose[22]
-            self.wamv_pose.pose = msg.pose[23]
+    def uav(self, msg):
+        self.current_pose = msg
+        if self.targetAltitude is None:
+            self.targetAltitude = self.current_pose.altitude + 10
+
+    def wamv(self, msg):
+        self.wamv_pose = msg
+
+    def artag(self, msg2):
+        self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg2, 'bgr8')
+        gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
+        results = self.detector.detect(gray)
+
+        for r in results:
+            (ptA, ptB, ptC, ptD) = r.corners
+            ptB = (int(ptB[0]), int(ptB[1]))
+            ptC = (int(ptC[0]), int(ptC[1]))
+            ptD = (int(ptD[0]), int(ptD[1]))
+            ptA = (int(ptA[0]), int(ptA[1]))
+            cv.line(self.cv_image, ptA, ptB, (0, 255, 0), 2)
+            cv.line(self.cv_image, ptB, ptC, (0, 255, 0), 2)
+            cv.line(self.cv_image, ptC, ptD, (0, 255, 0), 2)
+            cv.line(self.cv_image, ptD, ptA, (0, 255, 0), 2)
+            (cX, cY) = (int(r.center[0]), int(r.center[1]))
+            cv.circle(self.cv_image, (cX, cY), 5, (0, 0, 255), -1)
+
+        self.img_msg = self.bridge.cv2_to_imgmsg(self.cv_image, 'bgr8')
+
+    
 
     def calculate_vel(self):
-        dt = 1.0 / 30.0  # Assuming a constant loop rate of 30 Hz
+        R = 6378.137; #Radius of earth in KM
+        lat1 = self.current_pose.latitude * np.pi/180
+        lon1 = self.current_pose.longitude * np.pi/180
+        lat2 = self.wamv_pose.latitude * np.pi/180
+        lon2 = self.wamv_pose.longitude * np.pi/180
+        dLat = lat2 - lat1
+        dLon = lon2 - lon1
+        ax = np.cos(lat1) * np.cos(lat2) * np.sin(dLon/2) **2
+        ay = np.sin(dLat/2) **2
+        cx = 2 * np.arctan2(np.sqrt(ax), np.sqrt(1-ax))
+        cy = 2 * np.arctan2(np.sqrt(ay), np.sqrt(1-ay))
+        deltax = R * cx * 1000 * np.sign(dLon)
+        deltay = R * cy * 1000 * np.sign(dLat)
 
-        # Calculate position errors
-        error_x = self.wamv_pose.pose.position.x - self.current_pose.pose.position.x
-        error_y = self.wamv_pose.pose.position.y - self.current_pose.pose.position.y
-        error_z = 4.0 - self.current_pose.pose.position.z  # Assuming a target altitude of 4.0 meters
+        # deltax = self.wamv_pose.pose.position.x - self.current_pose.pose.position.x
+        # deltay = self.wamv_pose.pose.position.y - self.current_pose.pose.position.y
+        # deltax = self.deltaS * np.cos((lat1+ lat2) / 2) * (lon2 - lon1)
+        # deltay = self.deltaS * (lat2 - lat1)
+        # (_, _, euler_uav_z) = euler_from_quaternion([self.current_pose.pose.orientation.x,
+        #                                             self.current_pose.pose.orientation.y,
+        #                                             self.current_pose.pose.orientation.z,
+        #                                             self.current_pose.pose.orientation.w])
+        # (_, _, euler_wamv_z) = euler_from_quaternion([self.wamv_pose.pose.orientation.x,
+        #                                              self.wamv_pose.pose.orientation.y,
+        #                                              self.wamv_pose.pose.orientation.z,
+        #                                              self.wamv_pose.pose.orientation.w])
+        # deltayaw = euler_wamv_z - euler_uav_z
 
-        # Calculate yaw error
-        (_, _, euler_uav_z) = euler_from_quaternion([self.current_pose.pose.orientation.x,
-                                                      self.current_pose.pose.orientation.y,
-                                                      self.current_pose.pose.orientation.z,
-                                                      self.current_pose.pose.orientation.w])
-        (_, _, euler_wamv_z) = euler_from_quaternion([self.wamv_pose.pose.orientation.x,
-                                                       self.wamv_pose.pose.orientation.y,
-                                                       self.wamv_pose.pose.orientation.z,
-                                                       self.wamv_pose.pose.orientation.w])
-        error_yaw = euler_wamv_z - euler_uav_z
-        # rospy.loginfo("\n{},{},{},{}\n".format(error_x,error_y,error_z,error_yaw))
+        self.deltaS = np.sqrt(np.square(deltax) + np.square(deltay))
+        rospy.loginfo(f"Remaining distance: {self.deltaS}")
+        self.theta = np.arctan2(deltay, deltax)
 
-        # Compute PID control outputs
-        self.current_vel.header.frame_id = "base_link"
-        self.current_vel.twist.linear.x = self.pid_x.compute(error_x, dt)
-        self.current_vel.twist.linear.y = self.pid_y.compute(error_y, dt)
-        self.current_vel.twist.linear.z = self.pid_z.compute(error_z, dt)
-        self.current_vel.twist.angular.z = self.pid_yaw.compute(error_yaw, dt)
+        self.linear_vel = np.sqrt(2 * 0.01 * self.deltaS)
+        # self.yaw_vel = np.sqrt(2 * 0.1 * np.abs(self.theta))
 
-        # Apply PID control outputs to the final velocity
-        # self.current_vel.twist.linear.x = np.clip(control_output_x, -1.0, 1.0)
-        # self.current_vel.twist.linear.y = np.clip(control_output_y, -1.0, 1.0)
-        # self.current_vel.twist.linear.z = np.clip(control_output_z, -1.0, 1.0)
-        # self.current_vel.twist.angular.z = np.clip(control_output_yaw, -1.0, 1.0)
+        self.final_vel.twist.linear.x = self.linear_vel * np.cos(self.theta)
+        self.final_vel.twist.linear.y = self.linear_vel * np.sin(self.theta)
+        if self.targetAltitude is not None:
+            deltaz = self.targetAltitude - self.current_pose.altitude
+            self.final_vel.twist.linear.z = np.sign(deltaz) * np.sqrt(2*0.05*np.abs(deltaz))
+
+        # self.final_vel.twist.angular.z = np.sign(deltayaw) * self.yaw_vel        
+
 
 if __name__ == '__main__':
     try:
