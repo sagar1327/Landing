@@ -31,8 +31,8 @@ class Waypoints():
         self.artag_center = ()
         self.state_updated = False
         self.frame_updated = False
-        self.wamv_coordinate = NavSatFix
-        self.wamv_coordinate_received = False
+        # self.wamv_coordinate = NavSatFix
+        # self.wamv_coordinate_received = False
         self.uav_coordinate = NavSatFix
         self.current_state = State()
         self.rate = rospy.Rate(60)
@@ -41,6 +41,8 @@ class Waypoints():
         self.img_msg = CompressedImage()
         self.detector = ar.Detector()
         self.wp_reached = WaypointReached()
+
+        self.psuedo_wp = [[-33, 150, 6],[-33, 150.1, 6]]
 
         rospy.wait_for_service("/mavros/mission/pull")
         self.pull = rospy.ServiceProxy("/mavros/mission/pull", WaypointPull, persistent=True)
@@ -51,10 +53,10 @@ class Waypoints():
         rospy.wait_for_service('/mavros/set_mode')
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
 
-        rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, self.wamv)
+        # rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, self.wamv)
         rospy.Subscriber('mavros/state', State, callback=self.monitor_state)
         rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, self.uav)
-        rospy.Subscriber("/iris_downward_depth_camera/camera/rgb/image_raw/compressed", CompressedImage, self.artag)
+        rospy.Subscriber("rpi/rgb/image_raw/compressed", CompressedImage, self.artag)
         rospy.Subscriber("/mavros/mission/reached", WaypointReached, callback=self.wp)
         rospy.Subscriber('mavros/rc/in', RCIn, callback=self.rc_callback)
         self.artag_pub = rospy.Publisher("/artag/rgb/image_raw/compressed", CompressedImage, queue_size=100)
@@ -67,17 +69,16 @@ class Waypoints():
         self.current_state = msg
         self.state_updated  = True
 
-    def wamv(self, msg):
-        self.wamv_coordinate = msg
-        self.wamv_coordinate_received = True
+    # def wamv(self, msg):
+    #     self.wamv_coordinate = msg
+    #     self.wamv_coordinate_received = True
 
     def wp(self, msg):
         self.wp_reached = msg
 
-    def rc_callback(self,msg):
+    def rc_callback(self, msg):
         # Check if the RC switch is in the "Position control" position (Means manual control)
         if msg.channels[4] < 1300:
-            # Arm the UAV
             rospy.loginfo_once("Vehicle is in position mode (RC switch). Shutting down script")
             self.manual_control = True
             rospy.signal_shutdown("Manual control activated")
@@ -130,8 +131,10 @@ class Waypoints():
         self.uav_coordinate = msg
 
         if not self.target_wp_received and self.wamv_coordinate_received:
-            rospy.loginfo(f"\nPushing wp:\n1. Lat - {self.wamv_coordinate.latitude}\n2. Lon - {self.wamv_coordinate.longitude}\n3. Alt - 6\n")
-            self.push_wp(self.wamv_coordinate.latitude,self.wamv_coordinate.longitude,6)            
+            # rospy.loginfo(f"\nPushing wp:\n1. Lat - {self.wamv_coordinate.latitude}\n2. Lon - {self.wamv_coordinate.longitude}\n3. Alt - 6\n")
+            # self.push_wp(self.wamv_coordinate.latitude,self.wamv_coordinate.longitude,6)
+            rospy.loginfo(f"\nPushing wp:\n1. Lat - {self.psuedo_wp[0][0]}\n2. Lon - {self.psuedo_wp[0][1]}\n3. Alt - {self.psuedo_wp[0][2]}\n")
+            self.push_wp(self.psuedo_wp[0][0],self.psuedo_wp[0][1],self.psuedo_wp[0][2])            
             self.target_wp_received = True
 
         if self.state_updated:
@@ -144,15 +147,15 @@ class Waypoints():
                 if len(self.artag_center) != 0:
                     rospy.loginfo("ARTag detected.")
                 elif len(self.artag_center) == 0:
-                    rospy.loginfo(f"\nPushing wp:\n1. Lat - {self.wamv_coordinate.latitude}\n2. Lon - {(self.wamv_coordinate.longitude + (np.random.rand(1)*2 - 1)/20000)}\n3. Alt - 6\n")
-                    self.push_wp(self.wamv_coordinate.latitude,(self.wamv_coordinate.longitude + (np.random.rand(1)*2 - 1)/10000),6)
+                    rospy.loginfo(f"\nPushing wp:\n1. Lat - {self.psuedo_wp[1][0]}\n2. Lon - {(self.psuedo_wp[1][1] + (np.random.rand(1)*2 - 1)/20000)}\n3. Alt - {self.psuedo_wp[1][2]}\n")
+                    self.push_wp(self.psuedo_wp[1][0],(self.psuedo_wp[1][1] + (np.random.rand(1)*2 - 1)/10000),self.psuedo_wp[1][2])
                     mode = self.set_mode(custom_mode='AUTO.MISSION')
                     if mode.mode_sent:
                         rospy.loginfo("Moving to the next wp.")
                     self.target_reached = False
 
             self.state_updated = False
-            self.wamv_coordinate_received = False
+            # self.wamv_coordinate_received = False
             self.frame_updated = False
 
 
