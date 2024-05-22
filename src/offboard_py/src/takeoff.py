@@ -29,8 +29,6 @@ class TakeOff():
         self.linear_vel = 0
         self.yaw_vel = 0
         self.theta = 0
-        self.final_vel.header.frame_id = 'map'
-        self.final_vel.header.stamp = rospy.Time.now()
 
         rospy.Subscriber("/gazebo/model_states", ModelStates, self.callback1)
         rospy.Subscriber("/iris_downward_depth_camera/camera/rgb/image_raw/compressed", CompressedImage, self.callback2)
@@ -92,6 +90,8 @@ class TakeOff():
         self.linear_vel = np.sqrt(2 * 1 * self.deltaS)
         self.yaw_vel = np.sqrt(2 * 0.2 * np.abs(deltayaw))
 
+        self.final_vel.header.frame_id = 'map'
+        self.final_vel.header.stamp = rospy.Time.now()
         self.final_vel.twist.linear.x = self.linear_vel * np.cos(self.theta)
         self.final_vel.twist.linear.y = self.linear_vel * np.sin(self.theta)
         self.final_vel.twist.linear.z = np.sign(deltaz) * np.sqrt(2*2*np.abs(deltaz))
