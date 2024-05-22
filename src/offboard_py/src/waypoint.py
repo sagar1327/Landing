@@ -31,7 +31,17 @@ class Waypoints():
         self.targetWP_reached = False
         self.targetWP_reached_time = None
         # AprilTag
-        self.detector = ar.Detector()
+        options = ar.DetectorOptions(families=['tag36h11','tag25h9'],
+                                 border=1,
+                                 nthreads=4,
+                                 quad_decimate=1.0,
+                                 quad_blur=0.0,
+                                 refine_edges=True,
+                                 refine_decode=False,
+                                 refine_pose=False,
+                                 debug=False,
+                                 quad_contours=True)
+        self.detector = ar.Detector(options=options)
         self.artag_detected = False
         self.artag_previously_detected = False
         self.artag_center = []
@@ -57,6 +67,7 @@ class Waypoints():
         self.fov = 63
         self.image_size = [640, 480]
         # Landing parameters
+        self.hover_alt = None
         self.hovering_time = None
 
         self.rate = rospy.Rate(60)
@@ -132,9 +143,9 @@ class Waypoints():
                 cv.line(self.cv_image, ptD, ptA, (0, 255, 0), 2)
                 self.artag_center.append([int(r.center[0]), int(r.center[1])])
                 self.artag_family.append(str(r.tag_family))
-                cv.circle(self.cv_image, (self.artag_center[0][0], self.artag_center[0][1]), 5, (0, 0, 255), -1)
+                cv.circle(self.cv_image, (int(r.center[0]), int(r.center[1])), 5, (0, 0, 255), -1)
 
-        rospy.loginfo(self.artag_family)
+            # rospy.loginfo(self.artag_family)
         self.img_msg = self.bridge.cv2_to_compressed_imgmsg(self.cv_image, 'jpeg')
         self.artag_pub.publish(self.img_msg)
         self.frame_updated = True
@@ -160,12 +171,13 @@ class Waypoints():
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s", e)
 
-    def align(self, hover=False):
+    def align(self, hover=False, tagfamily="b'tag36h11'"):
         apx = self.fov/self.image_size[0]
         apy = self.fov/self.image_size[1]
         # Image frame
-        delta_pixel_x = self.artag_center[0][0] - self.image_size[0]/2
-        delta_pixel_y = self.artag_center[0][1] - self.image_size[1]/2
+        desired_center = self.artag_center[self.artag_family.index(tagfamily)]
+        delta_pixel_x = desired_center[0] - self.image_size[0]/2
+        delta_pixel_y = desired_center[1] - self.image_size[1]/2
         alpha = np.abs(delta_pixel_x)*apx*np.pi/180
         beta = np.abs(delta_pixel_y)*apy*np.pi/180
         deltax_img = np.sign(delta_pixel_x)*np.tan(alpha)*self.current_pose.pose.position.z
@@ -207,10 +219,17 @@ class Waypoints():
 
         # Publish the correction position if the distance is greater than 0.2
         if hover:
-            rospy.loginfo("Hovering and aligning")
+
+            if deltaS <= 0.2:
+                mode = self.set_mode(custom_mode='AUTO.LAND')
+                if mode.mode_sent:
+                    rospy.loginfo("Landing.")
+                rospy.signal_shutdown("Closing script.")
+
+            rospy.loginfo("Aligining to land.")
             #P controller to maintain altitude
-            altitude_target = 0.3 #Hover at 1.3 m
-            delta_alt = altitude_target - self.current_pose.pose.position.z
+            desired_alt =  0.3#Hover at 1.3 m
+            delta_alt = desired_alt - self.current_pose.pose.position.z
             gain_alt = 0.8
             self.set_uav_velocity.twist.linear.z = gain_alt*delta_alt
             
@@ -221,16 +240,29 @@ class Waypoints():
 
             if self.hovering_time is None:
                 self.hovering_time = rospy.Time.now().to_sec()
-                rospy.loginfo(f"Hovering time: {rospy.Time.now().to_sec() - self.hovering_time}")
             
         elif theta_vertical > 8*np.pi/180: #Not well aligned in z (more than 10 deg off) or in final aligning stage
-            rospy.loginfo("Aligning")
+            # rospy.loginfo("Aligning")
+            
+            # # Set the linear velocity components in the x and y directions
+            # self.set_uav_velocity.header.stamp = rospy.Time.now()
+            # self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
+            # self.set_uav_velocity.twist.linear.y = self.linear_vel * np.sin(theta_horizontal)
+            # self.set_uav_velocity.twist.linear.z = 0
+
+            rospy.loginfo("Hovering and aligning")
+            #P controller to maintain altitude
+            if self.hover_alt is None:
+                self.hover_alt =  self.current_pose.pose.position.z#Hover at 1.3 m
+            delta_alt = self.hover_alt - self.current_pose.pose.position.z
+            gain_alt = 0.8
+            self.set_uav_velocity.twist.linear.z = gain_alt*delta_alt
             
             # Set the linear velocity components in the x and y directions
             self.set_uav_velocity.header.stamp = rospy.Time.now()
             self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
             self.set_uav_velocity.twist.linear.y = self.linear_vel * np.sin(theta_horizontal)
-            self.set_uav_velocity.twist.linear.z = 0
+
         else:
             rospy.loginfo("Descending")
             # Set the linear velocity components in the x and y directions
@@ -238,6 +270,9 @@ class Waypoints():
             self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
             self.set_uav_velocity.twist.linear.y = self.linear_vel * np.sin(theta_horizontal)
             self.set_uav_velocity.twist.linear.z = -0.5 #Descend with 0.2 m/s
+
+            if self.hover_alt is not None:
+                self.hover_alt = None
 
     def uav(self, msg):
         self.uav_coordinate = msg
@@ -253,25 +288,21 @@ class Waypoints():
                 self.targetWP_reached = True
                 rospy.loginfo("Target wp reached.")
 
-            if self.targetWP_reached and (rospy.Time.now().to_sec() - self.targetWP_reached_time) > 2 and self.frame_updated:
+            if self.targetWP_reached and self.frame_updated:
                 
                 if len(self.artag_center) != 0:
-                    self.align(hover=True if self.current_pose.pose.position.z <=0.3 else False)
+                    self.align(hover=True if self.current_pose.pose.position.z <=0.3 else False,
+                               tagfamily="b'tag25h9'" if "b'tag25h9'" in self.artag_family else "b'tag36h11'")
 
                     if self.artag_detected_time is None:
                         self.artag_detected_time = rospy.Time.now().to_sec()
                         
-                    if (rospy.Time.now().to_sec() - self.artag_detected_time) > 3 and self.current_state.mode != "OFFBOARD":
+                    if (rospy.Time.now().to_sec() - self.artag_detected_time) > 3 and self.current_state.mode == "AUTO.LOITER":
                         mode = self.set_mode(custom_mode='OFFBOARD')
                         if mode.mode_sent:
                             rospy.loginfo("Moving towards the ARTag.")
                         self.artag_previously_detected = True
-
-                    if self.current_pose.pose.position.z <= 0.3 and (rospy.Time.now().to_sec() - self.hovering_time) > 5 and self.current_state.mode != "AUTO.LAND":
-                        mode = self.set_mode(custom_mode='AUTO.LAND')
-                        if mode.mode_sent:
-                            rospy.loginfo("Landing.")
-
+                        
                 elif len(self.artag_center) == 0:
                     if self.artag_previously_detected:
                         self.set_uav_velocity.header.stamp = rospy.Time.now()
