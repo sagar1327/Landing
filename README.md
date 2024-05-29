@@ -133,14 +133,14 @@ Add the following at the end.
           <visual> 
             <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
             <geometry>
-              <mesh filename="package://vrx_gazebo/models/aptag/marker0/meshes/Marker0.dae">
+              <mesh filename="package://vrx_gazebo/models/aptag/marker2/meshes/Marker2.dae">
               </mesh>
             </geometry>
           </visual>
           <collision>
             <origin xyz="0 0 0" rpy="0 0 0"/> 
             <geometry>
-              <mesh filename="package://vrx_gazebo/models/aptag/marker0/meshes/Marker0.dae">
+              <mesh filename="package://vrx_gazebo/models/aptag/marker2/meshes/Marker2.dae">
               </mesh>
             </geometry>
           </collision>
@@ -148,11 +148,12 @@ Add the following at the end.
         <joint name="wamv/aptag_joint" type="fixed">
             <parent link="wamv/base_link"/>
             <child link="wamv/aptag"/>
-            <origin rpy="0 1.5707963 1.5707963" xyz="0.035 -0.25 1.76"/>
+            <origin rpy="0 1.5707963 3.1415926" xyz="0.28 0 1.76"/>
         </joint>
       ```
 * Similarly, different/multiple apriltags can be generated and added to the wamv.   
 
 **Note: Delete the old contents of the default gazebo directory if your are building new april tag models. And follow the above steps.**
 
-![competition_course_gzclient_camera(1)-2024-02-15T00_19_06 955867](https://github.com/sagar1327/ROS/assets/125699896/9fc990a1-9b81-4246-9326-155730c54ebc)
+![competition_course_gzclient_camera(1)-2024-05-29T18_29_44 174995](https://github.com/sagar1327/ROS/assets/125699896/a3fffb96-19f6-4791-aa45-17af30682f5f)
+
