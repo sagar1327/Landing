@@ -46,6 +46,7 @@ class Waypoints():
         self.artag_center = []
         self.artag_family = []
         self.artag_detected_time = None
+        self.mainARTag_detected_time = None
         self.deltaS = np.Inf
         # UAV state.
         self.current_state = State()
@@ -56,9 +57,12 @@ class Waypoints():
         self.uav_coordinate = NavSatFix()
         # UAV pose and velocity.
         self.current_pose = PoseStamped()
+        self.current_alt = None
+        self.actual_alt = None
         self.set_uav_velocity = TwistStamped()
         self.set_uav_velocity.header.frame_id = 'map'
         self.angle = (0, 0, 0)
+        self.pose_updated = False
         # Image.
         self.img_msg = CompressedImage()
         self.bridge = CvBridge()
@@ -86,14 +90,19 @@ class Waypoints():
 
     def uav_pose(self, msg):
         self.current_pose = msg
+        if self.current_alt is None:
+            self.current_alt = self.current_pose.pose.position.z
+        self.actual_alt = self.current_pose.pose.position.z - self.current_alt
+        rospy.loginfo(f"\nCurrent Alt: {self.actual_alt}")
         self.angle = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
+        self.pose_updated = True
 
     def rc_callback(self,msg):
         # Check if the RC switch is in the "Position control" position (Means manual control).
         if msg.channels[4] < 1300:
-            rospy.loginfo_once("Vehicle is in position mode (RC switch). Shutting down script")
+            rospy.loginfo_once("\nVehicle is in position mode (RC switch). Shutting down script\n")
             self.manual_control = True
-            rospy.signal_shutdown("Manual control activated")
+            rospy.signal_shutdown("\nManual control activated\n")
 
     def artag(self, msg):
         self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
@@ -130,18 +139,18 @@ class Waypoints():
         # Push waypoints.
         try:
             push(start_index=0, waypoints=self.target_wp)
-            rospy.loginfo("Waypoint pushed.")
+            rospy.loginfo("\nWaypoint pushed\n.")
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s", e)
 
         # Pull waypoints.
         try:
             wp_count = pull().wp_received
-            rospy.loginfo("Received waypoint %d. Waypoints pulled.", wp_count)
+            rospy.loginfo("\nReceived waypoint %d. Waypoints pulled.\n", wp_count)
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s", e)
 
-    def align(self, hover=False, tagfamily="tag36h11"):
+    def align(self, tagfamily="tag36h11"):
         apx = self.fov/self.image_size[0]
         apy = self.fov/self.image_size[1]
         # Image frame.
@@ -150,8 +159,8 @@ class Waypoints():
         delta_pixel_y = desired_center[1] - self.image_size[1]/2
         alpha = np.abs(delta_pixel_x)*apx*np.pi/180
         beta = np.abs(delta_pixel_y)*apy*np.pi/180
-        deltax_img = np.sign(delta_pixel_x)*np.tan(alpha)*self.current_pose.pose.position.z
-        deltay_img = -np.sign(delta_pixel_y)*np.tan(beta)*self.current_pose.pose.position.z
+        deltax_img = np.sign(delta_pixel_x)*np.tan(alpha)*self.actual_alt
+        deltay_img = -np.sign(delta_pixel_y)*np.tan(beta)*self.actual_alt
         deltaS_img = np.sqrt(np.square(deltax_img) + np.square(deltay_img))
         theta_img = np.arctan2(deltay_img, deltax_img)
 
@@ -173,7 +182,7 @@ class Waypoints():
 
         # Calculate the angle between the estimated position and the target position
         theta_horizontal = theta_img+self.angle[2]-np.pi/2 #Angle to the target in x-y plane
-        theta_vertical = np.arctan2(self.deltaS, self.current_pose.pose.position.z) #Angle to the target in relative to straight down plane
+        theta_vertical = np.arctan2(self.deltaS, self.actual_alt) #Angle to the target in relative to straight down plane
 
         # Calculate the linear velocity based on the distance.
         gain = 0.3
@@ -187,30 +196,13 @@ class Waypoints():
         self.set_uav_velocity.twist.angular.z = angular_z_vel
 
         # Publish the correction position if the distance is greater than 0.2.
-        if hover:
+        if theta_vertical > 8*np.pi/180:
             if self.current_state.mode == "OFFBOARD":
-                rospy.loginfo("Aligining to land.")
-            #P controller to maintain altitude.
-            desired_alt =  0.3#Hover at 1.3 m.
-            delta_alt = desired_alt - self.current_pose.pose.position.z
-            gain_alt = 0.8
-            self.set_uav_velocity.twist.linear.z = gain_alt*delta_alt
-            
-            # Set the linear velocity components in the x and y directions.
-            self.set_uav_velocity.header.stamp = rospy.Time.now()
-            self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
-            self.set_uav_velocity.twist.linear.y = self.linear_vel * np.sin(theta_horizontal)
-
-            if self.hovering_time is None:
-                self.hovering_time = rospy.Time.now().to_sec()
-            
-        elif theta_vertical > 8*np.pi/180:
-            if self.current_state.mode == "OFFBOARD":
-                rospy.loginfo("Hovering and aligning")
+                rospy.loginfo("\nHovering and aligning\n")
             #P controller to maintain altitude.
             if self.hover_alt is None:
-                self.hover_alt =  self.current_pose.pose.position.z#Hover at 1.3 m.
-            delta_alt = self.hover_alt - self.current_pose.pose.position.z
+                self.hover_alt =  self.actual_alt#Hover at 1.3 m.
+            delta_alt = self.hover_alt - self.actual_alt
             gain_alt = 0.8
             self.set_uav_velocity.twist.linear.z = gain_alt*delta_alt
             
@@ -221,7 +213,7 @@ class Waypoints():
 
         else:
             if self.current_state.mode == "OFFBOARD":
-                rospy.loginfo("Descending")
+                rospy.loginfo("\nDescending\n")
             # Set the linear velocity components in the x and y directions.
             self.set_uav_velocity.header.stamp = rospy.Time.now()
             self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
@@ -265,20 +257,20 @@ def main():
         # Push and Pull initial waypoint of the boat.
         if not WP.target_wp_received and WP.wamv_coordinate_received:
             rospy.loginfo(f"\nPushing wp:\n1. Lat - {WP.wamv_coordinate.latitude}\n2. Lon - {WP.wamv_coordinate.longitude}\n3. Alt - 6\n")
-            WP.push_wp(push,pull,WP.wamv_coordinate.latitude,WP.wamv_coordinate.longitude,6)            
+            WP.push_wp(push,pull,WP.wamv_coordinate.latitude,WP.wamv_coordinate.longitude - 0.00005,6)            
             WP.target_wp_received = True
 
         # If uav reach the target waypoint.
         if WP.state_updated and WP.current_state.mode == "AUTO.LOITER" and not WP.targetWP_reached:
             WP.targetWP_reached_time = rospy.Time.now().to_sec()
             WP.targetWP_reached = True
-            rospy.loginfo("Target wp reached.")
+            rospy.loginfo("\nTarget wp reached\n.")
 
         # If a artag is detected at the target waypoint.
-        if WP.targetWP_reached and WP.frame_updated and len(WP.artag_center) != 0:
+        if WP.targetWP_reached and WP.pose_updated and WP.frame_updated and len(WP.artag_center) != 0:
 
             # Check if its close enough to land.
-            if WP.deltaS <= 0.2 and WP.current_pose.pose.position.z <= 0.3:
+            if WP.deltaS <= 0.1 and np.abs(WP.actual_alt) <= 0.1:
                 mode = set_mode(custom_mode='AUTO.LAND')
                 if mode.mode_sent:
                     rospy.loginfo("Landing.")
@@ -288,9 +280,11 @@ def main():
             if WP.artag_detected_time is None:
                 WP.artag_detected_time = rospy.Time.now().to_sec()
 
-            # Start publishing required velocity to move towards the target.     
-            WP.align(hover=True if WP.current_pose.pose.position.z <=0.3 else False,
-                        tagfamily="tag25h9" if "tag25h9" in WP.artag_family else "tag36h11")    
+            # Start publishing required velocity to move towards the target.
+            if "tag25h9" in WP.artag_family and WP.mainARTag_detected_time is None:
+                WP.mainARTag_detected_time = rospy.Time.now().to_sec()   
+            WP.align(tagfamily="tag25h9" if "tag25h9" in WP.artag_family \
+                            and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2 else "tag36h11")    
 
             # After few seconds of timer initiation, change the flight mode. 
             if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 3 and WP.current_state.mode == "AUTO.LOITER":
@@ -309,11 +303,11 @@ def main():
 
             # Move to a different waypoint.
             else:
-                rospy.loginfo(f"\nPushing wp:\n1. Lat - {WP.wamv_coordinate.latitude}\n2. Lon - {WP.wamv_coordinate.longitude + (np.random.rand(1)*2 - 1)/10000}\n3. Alt - 6\n")
-                WP.push_wp(push,pull,WP.wamv_coordinate.latitude,(WP.wamv_coordinate.longitude + (np.random.rand(1)- 0.5)/10000),6)
+                rospy.loginfo(f"\nPushing wp:\n1. Lat - {WP.wamv_coordinate.latitude}\n2. Lon - {WP.wamv_coordinate.longitude + (np.random.rand(1) - 0.5)/20000}\n3. Alt - 6\n")
+                WP.push_wp(push,pull,WP.wamv_coordinate.latitude,(WP.wamv_coordinate.longitude + (np.random.rand(1)- 0.5)/20000),6)
                 mode = set_mode(custom_mode='AUTO.MISSION')
                 if mode.mode_sent:
-                    rospy.loginfo("Moving to the next wp.")
+                    rospy.loginfo("\nMoving to the next wp.\n")
                 WP.targetWP_reached = False
         
         # Publish img mssg only if the a new frame is received.
@@ -322,7 +316,7 @@ def main():
         # Publish velocity mssg (Even empty)
         velocity_pub.publish(WP.set_uav_velocity)
 
-        WP.state_updated = WP.wamv_coordinate_received = WP.frame_updated = False
+        WP.state_updated = WP.wamv_coordinate_received = WP.frame_updated = WP.pose_updated = False
         rate.sleep()
 
 
