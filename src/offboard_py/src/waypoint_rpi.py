@@ -226,7 +226,7 @@ class Waypoints():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 1:
             # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
-            if np.mean(self.proximity) < 0.1 and self.actual_alt < 0.1:
+            if np.mean(self.proximity) < 0.1 and self.actual_alt < 0.5:
                 self.landing_condition = True 
             else:
                 self.land_time = None
@@ -254,10 +254,10 @@ def main():
     rospy.Subscriber('mavros/rc/in', RCIn, callback=WP.rc_callback)
 
     # ROS Publishers.
-    artag_pub = rospy.Publisher("/artag/rgb/image_raw/compressed", CompressedImage, queue_size=3)
+    artag_pub = rospy.Publisher("/artag/rgb/image_raw/compressed", CompressedImage, queue_size=1)
     velocity_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
 
-    wy = [29.1826633,-81.0441529,3]
+    wy = [29.1826640,-81.044177,3]
 
     rate = rospy.Rate(60)
 
@@ -271,7 +271,7 @@ def main():
             WP.target_wp_received = True
 
         # Switch to mission mode
-        if WP.current_state.armed and not WP.mode_changed_to_mission and np.round(np.abs(WP.actual_alt)) == 0.0:
+        if WP.current_state.armed and not WP.mode_changed_to_mission:
             mode = set_mode(custom_mode='AUTO.MISSION')
             if mode.mode_sent:
                 rospy.loginfo("\nMode changed to mission. Executing the current mission.\n")
@@ -285,7 +285,8 @@ def main():
 
         # If a artag is detected at the target waypoint.
         if WP.frame_updated and len(WP.artag_center) != 0:
-            if WP.targetWP_reached and WP.pose_updated and WP.frame_updated and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 2:
+            if WP.targetWP_reached and WP.pose_updated and WP.frame_updated and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 5:
+                rospy.loginfo("Detected.")
 
                 # Check Landing condition.
                 WP.land()
@@ -315,7 +316,8 @@ def main():
 
         # If a artag is not detected at the target waypoint.        
         elif WP.frame_updated and len(WP.artag_center) == 0:
-            if WP.targetWP_reached and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 1:
+            if WP.targetWP_reached and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 5:
+                rospy.loginfo("Not Detected.")
 
                 # Ascend if it was previously detected at the location.
                 if WP.artag_previously_detected:

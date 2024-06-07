@@ -13,8 +13,8 @@ class ApriltagDetector():
         self.cv_image = []
         self.detector = ar.Detector()
         rospy.init_node("air_tag", anonymous=True)
-        rospy.Subscriber("/iris_downward_depth_camera/camera/rgb/image_raw/compressed", CompressedImage, self.callback)
-        self.tag_pub = rospy.Publisher("/artag/rgb/image_raw", Image, queue_size=100)
+        rospy.Subscriber("/rpi/rgb/image_raw/compressed", CompressedImage, self.callback)
+        self.tag_pub = rospy.Publisher("/artag/rgb/image_raw", Image, queue_size=1)
         self.rate = rospy.Rate(60)
         
         rospy.spin()
@@ -25,19 +25,23 @@ class ApriltagDetector():
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         results = self.detector.detect(gray)
 
-        for r in results:
-            (ptA, ptB, ptC, ptD) = r.corners
-            ptB = (int(ptB[0]), int(ptB[1]))
-            ptC = (int(ptC[0]), int(ptC[1]))
-            ptD = (int(ptD[0]), int(ptD[1]))
-            ptA = (int(ptA[0]), int(ptA[1]))
-            cv.line(self.cv_image, ptA, ptB, (0, 255, 0), 2)
-            cv.line(self.cv_image, ptB, ptC, (0, 255, 0), 2)
-            cv.line(self.cv_image, ptC, ptD, (0, 255, 0), 2)
-            cv.line(self.cv_image, ptD, ptA, (0, 255, 0), 2)
-            (cX, cY) = (int(r.center[0]), int(r.center[1]))
-            cv.circle(self.cv_image, (cX, cY), 5, (0, 0, 255), -1)
-            # rospy.loginfo(r.center)
+        if len(results) != 0:
+            rospy.loginfo("Detected.")
+            for r in results:
+                (ptA, ptB, ptC, ptD) = r.corners
+                ptB = (int(ptB[0]), int(ptB[1]))
+                ptC = (int(ptC[0]), int(ptC[1]))
+                ptD = (int(ptD[0]), int(ptD[1]))
+                ptA = (int(ptA[0]), int(ptA[1]))
+                cv.line(self.cv_image, ptA, ptB, (0, 255, 0), 2)
+                cv.line(self.cv_image, ptB, ptC, (0, 255, 0), 2)
+                cv.line(self.cv_image, ptC, ptD, (0, 255, 0), 2)
+                cv.line(self.cv_image, ptD, ptA, (0, 255, 0), 2)
+                (cX, cY) = (int(r.center[0]), int(r.center[1]))
+                cv.circle(self.cv_image, (cX, cY), 5, (0, 0, 255), -1)
+                # rospy.loginfo(r.center)
+        else:
+            rospy.loginfo("Not Detected.")
 
         img_msg = self.bridge.cv2_to_imgmsg(self.cv_image, 'bgr8')
         self.tag_pub.publish(img_msg)
