@@ -82,7 +82,7 @@ class Waypoints():
         if self.current_alt is None:
             self.current_alt = self.current_pose.pose.position.z
         self.actual_alt = self.current_pose.pose.position.z - self.current_alt
-        rospy.loginfo(f"\nCurrent Alt: {self.actual_alt}")
+        rospy.loginfo_throttle(2,f"\nCurrent Alt: {self.actual_alt}")
         self.angle = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
         self.pose_updated = True
 
@@ -95,9 +95,11 @@ class Waypoints():
 
     def artag(self, msg):
         self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
+        self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         self.artag_center = []
         self.artag_family = []
+        # rospy.loginfo("Detected")
         results = self.detector.detect(gray)
 
         if len(results) != 0:
@@ -174,7 +176,7 @@ class Waypoints():
         theta_vertical = np.arctan2(self.deltaS, self.actual_alt) #Angle to the target in relative to straight down plane
 
         # Calculate the linear velocity based on the distance.
-        gain = 0.3
+        gain = 0.5
         self.linear_vel = gain * self.deltaS
         self.linear_vel = 0.8 if self.linear_vel > 0.8 else self.linear_vel #Avoid going too fast to be safe was 0.5.
         ##################################
@@ -190,7 +192,7 @@ class Waypoints():
                 rospy.loginfo("\nHovering and aligning\n")
             #P controller to maintain altitude.
             if self.hover_alt is None:
-                self.hover_alt =  self.actual_alt#Hover at 1.3 m.
+                self.hover_alt =  self.actual_alt
             delta_alt = self.hover_alt - self.actual_alt
             gain_alt = 0.8
             self.set_uav_velocity.twist.linear.z = gain_alt*delta_alt
@@ -236,7 +238,7 @@ def main():
     artag_pub = rospy.Publisher("/artag/rgb/image_raw/compressed", CompressedImage, queue_size=3)
     velocity_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
 
-    wy = []
+    wy = [29.1826633,-81.0441529,3]
 
     rate = rospy.Rate(60)
 
@@ -245,8 +247,8 @@ def main():
 
         # Push and Pull initial waypoint of the boat.
         if not WP.target_wp_received:
-            rospy.loginfo(f"\nPushing wp:\n1. Lat - {wy[0]}\n2. Lon - {wy[1]}\n3. Alt - 6\n")
-            WP.push_wp(push,pull,wy[0],wy[1],6)            
+            rospy.loginfo(f"\nPushing wp:\n1. Lat - {wy[0]}\n2. Lon - {wy[1]}\n3. Alt - {wy[2]}\n")
+            WP.push_wp(push,pull,wy[0],wy[1],wy[2])            
             WP.target_wp_received = True
 
         # If uav reach the target waypoint.
@@ -289,6 +291,10 @@ def main():
                 WP.set_uav_velocity.twist.linear.x = 0
                 WP.set_uav_velocity.twist.linear.y = 0
                 WP.set_uav_velocity.twist.linear.z = 0.3
+                rospy.loginfo_throttle(2,"Lost Target.")
+                # mode = set_mode(custom_mode='OFFBOARD')
+                # if mode.mode_sent:
+                #     rospy.loginfo_throttle(2,"Loiter.")
 
             # Move to a different waypoint.
             # else:

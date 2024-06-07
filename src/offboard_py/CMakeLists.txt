@@ -194,6 +194,7 @@ install(PROGRAMS
    monitor_state.py
    detect_apriltag.py
    waypoint.py
+   waypoint_rpi.py
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
