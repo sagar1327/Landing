@@ -56,7 +56,6 @@ class Waypoints():
         # UAV and WAMV coordinate.
         self.wamv_coordinate = NavSatFix()
         self.wamv_coordinate_received = False
-        self.uav_coordinate = NavSatFix()
         # UAV pose and velocity.
         self.current_pose = PoseStamped()
         self.current_alt = 0.0
@@ -86,9 +85,6 @@ class Waypoints():
     def wamv(self, msg):
         self.wamv_coordinate = msg
         self.wamv_coordinate_received = True
-
-    def uav(self, msg):
-        self.uav_coordinate = msg
 
     def wp(self, msg):
         self.wp_reached = msg
@@ -231,8 +227,8 @@ class Waypoints():
             if self.hover_alt is not None:
                 self.hover_alt = None
         
-        rospy.loginfo_throttle(2,f"\nlinearx_vel: {self.set_uav_velocity.twist.linear.x}\nlineary_vel: {self.set_uav_velocity.twist.linear.y}"+
-                      f"\nlinearz_vel: {self.set_uav_velocity.twist.linear.z}\n")
+        # rospy.loginfo_throttle(2,f"\nlinearx_vel: {self.set_uav_velocity.twist.linear.x}\nlineary_vel: {self.set_uav_velocity.twist.linear.y}"+
+        #               f"\nlinearz_vel: {self.set_uav_velocity.twist.linear.z}\n")
 
     def land(self):
         if self.land_time is None:
@@ -241,7 +237,7 @@ class Waypoints():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 1:
             # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
-            if np.mean(self.proximity) < 0.1 and self.actual_alt < 0.1:
+            if np.mean(self.proximity) < 0.1 and self.actual_alt < 0.5:
                 self.landing_condition = True 
             else:
                 self.land_time = None
@@ -316,16 +312,24 @@ def main():
             if "tag25h9" in WP.artag_family and WP.mainARTag_detected_time is None:
                 WP.mainARTag_detected_time = rospy.Time.now().to_sec()
 
-            if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
-                            and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
-                WP.align(tagfamily="tag25h9")
-            else:
-                WP.align()  
+            if WP.current_state.mode != "OFFBOARD":
+                if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                    WP.align(tagfamily="tag25h9")
+                else:
+                    WP.align()  
 
-            # After few seconds of timer initiation, change the flight mode. 
-            if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1 and WP.current_state.mode == "AUTO.LOITER":
-                mode = set_mode(custom_mode='OFFBOARD')
-                WP.artag_previously_detected = True
+                # After few seconds of timer initiation, change the flight mode. 
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1 and WP.current_state.mode == "AUTO.LOITER":
+                    mode = set_mode(custom_mode='OFFBOARD')
+                    WP.artag_previously_detected = True
+            else:
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1:
+                    if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                        WP.align(tagfamily="tag25h9")
+                    else:
+                        WP.align()
 
             if WP.artag_lost_time is not None:
                     WP.artag_lost_time = None
@@ -361,7 +365,7 @@ def main():
                     WP.artag_detected_time = None
 
             # Move to a different waypoint.
-            elif not WP.artag_previously_detected:
+            else:
                 rospy.loginfo(f"\nPushing wp:\n1. Lat - {WP.wamv_coordinate.latitude}\n2. Lon - {WP.wamv_coordinate.longitude + (np.random.rand(1) - 1)/10000}\n3. Alt - 6\n")
                 WP.push_wp(push,pull,WP.wamv_coordinate.latitude,(WP.wamv_coordinate.longitude + (np.random.rand(1) - 1)/10000),6)
                 mode = set_mode(custom_mode='AUTO.MISSION')
