@@ -309,21 +309,23 @@ def main():
 
             if WP.current_state.mode != "OFFBOARD":
                 if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
-                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 1):
                     WP.align(tagfamily="tag25h9")
+                    rospy.loginfo("Using the smaller tag.")
                 else:
                     WP.align()  
 
                 # After few seconds of timer initiation, change the flight mode. 
-                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1 and WP.current_state.mode == "AUTO.LOITER":
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 0.5 and WP.current_state.mode == "AUTO.LOITER":
                     mode = set_mode(custom_mode='OFFBOARD')
                     WP.artag_previously_detected = True
             else:
-                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1:
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 0.5:
                     if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
-                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 1):
                         WP.align(tagfamily="tag25h9")
                     else:
+                        rospy.loginfo("Using the smaller tag.")
                         WP.align()
 
             if WP.artag_lost_time is not None:
@@ -337,20 +339,20 @@ def main():
                 if WP.artag_lost_time is None:
                     mode = set_mode(custom_mode='AUTO.LOITER')
                     if mode.mode_sent:
-                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 2 secs.\n")
+                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 1 secs.\n")
                         WP.artag_lost_time = rospy.Time.now().to_sec()
 
-                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 1:
+                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 0.5:
                     WP.set_uav_velocity.header.stamp = rospy.Time.now()
                     WP.set_uav_velocity.twist.linear.x = 0
                     WP.set_uav_velocity.twist.linear.y = 0
                     WP.set_uav_velocity.twist.linear.z = 0.3
                 
-                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 2:
+                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 1:
                     if WP.current_state.mode == 'AUTO.LOITER':
                         mode = set_mode(custom_mode='OFFBOARD')
                         if mode.mode_sent:
-                            rospy.loginfo_throttle(2,"\nLost Target for more than 2 secs. Ascending.\n")
+                            rospy.loginfo_throttle(2,"\nLost Target for more than 1 secs. Ascending.\n")
                     WP.set_uav_velocity.header.stamp = rospy.Time.now()
                     WP.set_uav_velocity.twist.linear.x = 0
                     WP.set_uav_velocity.twist.linear.y = 0
