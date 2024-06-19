@@ -260,7 +260,7 @@ def main():
     artag_pub = rospy.Publisher("/artag/rgb/image_raw/compressed", CompressedImage, queue_size=1)
     velocity_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
 
-    wy = [29.1826640,-81.044177,3]
+    wy = [29.182675,-81.04419,5]
 
     rate = rospy.Rate(60)
 
@@ -337,7 +337,7 @@ def main():
                 if WP.artag_lost_time is None:
                     mode = set_mode(custom_mode='AUTO.LOITER')
                     if mode.mode_sent:
-                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 2 secs.\n")
+                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 1 secs.\n")
                         WP.artag_lost_time = rospy.Time.now().to_sec()
 
                 elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 1:
