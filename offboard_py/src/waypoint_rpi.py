@@ -87,23 +87,23 @@ class Waypoints():
         if self.state_updated and not self.current_state.armed:
             self.current_alt = self.current_pose.pose.position.z
         self.actual_alt = self.current_pose.pose.position.z - self.current_alt
-        rospy.loginfo_throttle(2,f"\nCurrent Alt: {self.actual_alt}")
+        # rospy.loginfo_throttle(2,f"\nCurrent Alt: {self.actual_alt}.")
         self.angle = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
         self.pose_updated = True
 
     def rc_callback(self,msg):
         # Check if the RC switch is in the "Position control" position (Means manual control).
         if msg.channels[4] < 1300:
-            rospy.loginfo_once("\nVehicle is in position mode (RC switch). Shutting down script\n")
+            rospy.loginfo_once("\nVehicle is in position mode (RC switch). Shutting down script.")
             self.manual_control = True
-            rospy.signal_shutdown("\nManual control activated\n")
+            rospy.signal_shutdown("\nManual control activated.")
 
     def artag(self, msg):
         self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
         self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
-        self.artag_center = []
-        self.artag_family = []
+        # self.artag_center = []
+        # self.artag_family = []
         # rospy.loginfo("Detected")
         results = self.detector.detect(gray)
 
@@ -120,6 +120,7 @@ class Waypoints():
                 cv.line(self.cv_image, ptD, ptA, (0, 255, 0), 2)
                 self.artag_center.append([int(r.center[0]), int(r.center[1])])
                 self.artag_family.append(str(r.tag_family.decode("utf-8")))
+                # rospy.loginfo("{}".format(str(r.tag_family.decode("utf-8"))))
                 cv.circle(self.cv_image, (int(r.center[0]), int(r.center[1])), 2, (0, 0, 255), -1)
 
         self.img_msg = self.bridge.cv2_to_compressed_imgmsg(self.cv_image, 'jpeg')
@@ -150,6 +151,8 @@ class Waypoints():
         apx = self.fov/self.image_size[0]
         apy = self.fov/self.image_size[1]
         # Image frame.
+        # rospy.loginfo("Current tag: {}".format(tagfamily))
+        # rospy.loginfo("Family List: {}".format(self.artag_family))
         desired_center = self.artag_center[self.artag_family.index(tagfamily)]
         delta_pixel_x = desired_center[0] - self.image_size[0]/2
         delta_pixel_y = desired_center[1] - self.image_size[1]/2
@@ -197,7 +200,7 @@ class Waypoints():
         # Publish the correction position if the distance is greater than 0.2.
         if theta_vertical > 8*np.pi/180:
             if self.current_state.mode == "OFFBOARD":
-                rospy.loginfo("\nHovering and aligning\n")
+                rospy.loginfo("\nHovering and aligning")
             #P controller to maintain altitude.
             if self.hover_alt is None:
                 self.hover_alt =  self.actual_alt
@@ -212,7 +215,7 @@ class Waypoints():
 
         else:
             if self.current_state.mode == "OFFBOARD":
-                rospy.loginfo("\nDescending\n")
+                rospy.loginfo("\nDescending")
             # Set the linear velocity components in the x and y directions.
             self.set_uav_velocity.header.stamp = rospy.Time.now()
             self.set_uav_velocity.twist.linear.x = self.linear_vel * np.cos(theta_horizontal)
@@ -269,7 +272,7 @@ def main():
 
         # Push and Pull initial waypoint of the boat.
         if not WP.target_wp_received:
-            rospy.loginfo(f"\nPushing wp:\n1. Lat - {wy[0]}\n2. Lon - {wy[1]}\n3. Alt - {wy[2]}\n")
+            rospy.loginfo(f"\nPushing wp:\n1. Lat - {wy[0]}\n2. Lon - {wy[1]}\n3. Alt - {wy[2]}")
             WP.push_wp(push,pull,wy[0],wy[1],wy[2])            
             WP.target_wp_received = True
 
@@ -277,26 +280,27 @@ def main():
         if WP.current_state.armed and not WP.mode_changed_to_mission:
             mode = set_mode(custom_mode='AUTO.MISSION')
             if mode.mode_sent:
-                rospy.loginfo("\nMode changed to mission. Executing the current mission.\n")
+                rospy.loginfo("\nMode changed to mission. Executing the current mission.")
             WP.mode_changed_to_mission = True
 
         # If uav reach the target waypoint.
         if WP.state_updated and WP.current_state.mode == "AUTO.LOITER" and not WP.targetWP_reached:
             WP.targetWP_reached_time = rospy.Time.now().to_sec()
             WP.targetWP_reached = True
-            rospy.loginfo("\nTarget wp reached\n.")
+            rospy.loginfo("\nTarget wp reached.")
 
         # If a artag is detected at the target waypoint.
         if WP.targetWP_reached and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 5 and WP.pose_updated and WP.frame_updated and len(WP.artag_center) != 0:
             
-            rospy.loginfo("Detected.")
+            rospy.loginfo("\nDetected.")
+            # rospy.loginfo(WP.artag_family)
 
             # Check Landing condition.
             WP.land()
             if WP.landing_condition:               
                 mode = set_mode(custom_mode='AUTO.LAND')
                 if mode.mode_sent:
-                    rospy.loginfo("Landing.")
+                    rospy.loginfo("\nLanding.")
                 break
             
             # Initiate a timer.
@@ -309,25 +313,29 @@ def main():
 
             if WP.current_state.mode != "OFFBOARD":
                 if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
-                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 0):
                     WP.align(tagfamily="tag25h9")
                 else:
                     WP.align()  
 
                 # After few seconds of timer initiation, change the flight mode. 
-                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1 and WP.current_state.mode == "AUTO.LOITER":
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 0.1 and WP.current_state.mode == "AUTO.LOITER":
+                    rospy.loginfo("\nNow in offboard mode.")
                     mode = set_mode(custom_mode='OFFBOARD')
-                    WP.artag_previously_detected = True
+                    
             else:
-                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 1:
+                if (rospy.Time.now().to_sec() - WP.artag_detected_time) > 0.1:
                     if "tag36h11" not in WP.artag_family or ("tag25h9" in WP.artag_family \
-                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 2):
+                                and (rospy.Time.now().to_sec() - WP.mainARTag_detected_time) > 0):
                         WP.align(tagfamily="tag25h9")
                     else:
                         WP.align()
 
             if WP.artag_lost_time is not None:
-                    WP.artag_lost_time = None 
+                    WP.artag_lost_time = None
+            WP.artag_previously_detected = True
+
+            # WP.artag_family = [] 
 
         # If a artag is not detected at the target waypoint.        
         elif WP.targetWP_reached and (rospy.Time.now().to_sec() - WP.targetWP_reached_time) > 3 and WP.frame_updated and len(WP.artag_center) == 0:
@@ -335,22 +343,25 @@ def main():
             # Ascend if it was previously detected at the location.
             if WP.artag_previously_detected:
                 if WP.artag_lost_time is None:
+                    WP.artag_lost_time = rospy.Time.now().to_sec()
+
+                if (rospy.Time.now().to_sec() - WP.artag_lost_time) > 0.5:
                     mode = set_mode(custom_mode='AUTO.LOITER')
                     if mode.mode_sent:
-                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 1 secs.\n")
-                        WP.artag_lost_time = rospy.Time.now().to_sec()
+                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 0.5 secs.")
+                        # WP.artag_lost_time = rospy.Time.now().to_sec()
 
-                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 1:
+                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 0.8:
                     WP.set_uav_velocity.header.stamp = rospy.Time.now()
                     WP.set_uav_velocity.twist.linear.x = 0
                     WP.set_uav_velocity.twist.linear.y = 0
                     WP.set_uav_velocity.twist.linear.z = 0.3
                 
-                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 2:
+                elif (rospy.Time.now().to_sec() - WP.artag_lost_time) > 1:
                     if WP.current_state.mode == 'AUTO.LOITER':
                         mode = set_mode(custom_mode='OFFBOARD')
                         if mode.mode_sent:
-                            rospy.loginfo_throttle(2,"\nLost Target for more than 2 secs. Ascending.\n")
+                            rospy.loginfo("\nLost Target for more than 0.5 secs. Ascending.")
                     WP.set_uav_velocity.header.stamp = rospy.Time.now()
                     WP.set_uav_velocity.twist.linear.x = 0
                     WP.set_uav_velocity.twist.linear.y = 0
@@ -359,7 +370,9 @@ def main():
                 if WP.artag_detected_time is not None:
                     WP.artag_detected_time = None
             else:
-                rospy.loginfo("No Apriltag.")
+                rospy.loginfo("\nNo Apriltag.")
+
+            # WP.artag_family = []
             
 
         # Publish img mssg only if the a new frame is received.
@@ -369,6 +382,8 @@ def main():
         velocity_pub.publish(WP.set_uav_velocity)
 
         WP.state_updated = WP.frame_updated = WP.pose_updated = False
+        WP.artag_family = []
+        WP.artag_center = []
         rate.sleep()
 
 
