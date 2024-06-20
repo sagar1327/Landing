@@ -96,7 +96,8 @@ class ApriltagDetector():
                 elif r.tag_family.decode("utf-8") == "tag25h9":
                     actual_target_size = 0.162
 
-                altitude.append(np.sqrt(np.square(actual_target_size/(2*np.tan(theta)))/(np.square(np.tan(beta)+1))))
+                # altitude.append(np.sqrt(np.square(actual_target_size/(2*np.tan(theta/2)))/(np.square(np.tan(beta)+1))))
+                altitude.append(actual_target_size/(2*np.tan(theta/2)))
 
                 print("\nTag: {}, Altitude: {}".format(r.tag_family.decode("utf-8"), altitude))
 
