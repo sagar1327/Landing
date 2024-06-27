@@ -3,77 +3,94 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
-from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
+from mavros_msgs.srv import SetMode, WaypointPull
+from offboard_py.msg import MissionStatus
+from std_msgs.msg import Bool
 
 class MonitorState():
-    """Get the current state, arm, and set offboard mode"""
     def __init__(self):
 
-        # Initializing node
         rospy.init_node('monitor_state_node', anonymous=True)
 
-        # Defining current state
-        self.current_state = State()
+        self.current_state_msg = State()
         self.initialize_time = rospy.Time.now().to_sec()
-        self.arm_time = None
         self.takeoff_alt_reached = False
+        self.landing_condition_msg = Bool()
+        self.new_mission_msg = MissionStatus()
 
-        # Subscriber for getting the current state
-        rospy.Subscriber('mavros/state', State, callback=self.monitor_state)
-        # Subscriber for current position
+        rospy.Subscriber('mavros/state', State, callback=self.current_state)
         rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback=self.current_position)
+        rospy.Subscriber("/kevin/landing", Bool, callback=self.landing_condition)
+        rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.new_mission)
+        self.rate = rospy.Rate(60)
 
-        # Setiing the Bool value for arming
-        # rospy.wait_for_service("/mavros/cmd/arming")
-        # self.arm = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
-        # self.arm_request = CommandBoolRequest()
-        # self.arm_request.value = True
-        
-        # Setting the custom mode
+        rospy.wait_for_service("/mavros/mission/pull")
+        self.pull = rospy.ServiceProxy("/mavros/mission/pull", WaypointPull, persistent=True)
         rospy.wait_for_service('/mavros/set_mode')
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
-
-        rospy.spin()
     
     def current_position(self,msg):
-        """Callback function for the current position subscriber updating vehicle position"""
         self.current_pose = msg
 
-    def monitor_state(self, msg):
-        """Monitor and change curent state."""
-        self.current_state = msg
-        rospy.loginfo("Arming status: " + str(self.current_state.armed) + ", " + "Mode: " + self.current_state.mode)
-        
-        # Check and wait for arming
-        if rospy.Time.now().to_sec() - self.initialize_time > 3 and not self.current_state.armed:
-            rospy.loginfo_once("Vehicle is ready to arm...")
-        elif self.current_state.armed and self.arm_time is None:
-            rospy.loginfo_once("Vehicle armed.")
-            self.arm_time = rospy.Time.now().to_sec()
+    def landing_condition(self, msg):
+        self.landing_condition_msg = msg
 
-        # If armed, takeoff to default altitude (2.5 m)
-        if self.current_state.armed and rospy.Time.now().to_sec() - self.arm_time > 3 and not self.takeoff_alt_reached:
-            if self.current_state.mode != "AUTO.TAKEOFF":
-                mode = self.set_mode(custom_mode='AUTO.TAKEOFF')
-                if mode.mode_sent:
-                    rospy.loginfo_once("Vehicle is taking off.")
+    def current_state(self, msg):
+        self.current_state_msg = msg
+        # print("\nArming status: {}, Mode: {}".format(self.current_state_msg.armed,self.current_state_msg.mode))
 
-            if self.current_state.mode == "AUTO.LOITER":
-                self.takeoff_alt_reached = True
-                mode = self.set_mode(custom_mode='OFFBOARD')
-                if mode.mode_sent:
-                    rospy.loginfo_once("Vehicle is in OFFBOARD mode.")
+    def new_mission(self, msg):
+        self.new_mission_msg = msg
 
-        if self.current_state.mode == 'POSCTL':
-            mode = self.set_mode(custom_mode='AUTO.RTL')
+    def pull_wp(self):
+        try:
+            wp_count = self.pull().wp_received
+            if wp_count > 0:
+                # print("\nReceived waypoint %d. Waypoints pulled.\n", wp_count)
+                return 1
+            else:
+                return 0
+        except rospy.ServiceException as e:
+            print("\nService call failed: %s", e)
+            return 0
+
+
+def main():
+
+    MS = MonitorState()
+    while not rospy.is_shutdown():
+
+        # Change to landing mode.
+        if MS.landing_condition_msg.data:
+            mode = MS.set_mode(custom_mode="AUTO.LAND")
             if mode.mode_sent:
-                rospy.loginfo('FAILSAFE Mode enabled.')
-                rospy.signal_shutdown('Failsafe enabling complete.')
+                print("\nUAV now landing.")
 
+        # Check and wait for arming
+        if rospy.Time.now().to_sec() - MS.initialize_time > 1: 
+            
+            if not MS.current_state_msg.armed:
+                print("\nVehicle is ready to arm.")
+            elif MS.current_state_msg.armed:
+                print("\nVehicle armed.")
+
+            # Check for new mission
+            if MS.new_mission_msg.new_mission_request and MS.current_state_msg.armed:
+                wp_received = MS.pull_wp()
+
+                # Switch to AUTO.MISSION mode
+                if not wp_received:
+                    print("\nWaiting for waypoints")
+                else:
+                    mode = MS.set_mode(custom_mode='AUTO.MISSION')
+                    if mode.mode_sent:
+                        print("\nMode changed to mission. Executing the current mission.\n")
+
+        MS.rate.sleep()
 
 
 if __name__ == '__main__':
     try:
-        ms = MonitorState()
+        main()
     except rospy.ROSInterruptException:
         pass

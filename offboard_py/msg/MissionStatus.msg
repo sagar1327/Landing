@@ -1,0 +1,1 @@
+bool new_mission_request

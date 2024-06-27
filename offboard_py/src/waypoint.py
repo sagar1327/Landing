@@ -17,7 +17,7 @@ class Waypoints():
         # Waypoint.
         self.wp_reached = WaypointReached()
         self.single_wp = Waypoint()
-        self.target_wp = []
+        # self.target_wp = []
         self.single_wp.frame = 3
         self.single_wp.command = 16
         self.single_wp.autocontinue = True
@@ -135,11 +135,11 @@ class Waypoints():
         self.single_wp.y_long = lon
         self.single_wp.z_alt = alt
 
-        self.target_wp.append(self.single_wp)
+        target_wp = [self.single_wp]
 
         # Push waypoints.
         try:
-            push(start_index=0, waypoints=self.target_wp)
+            push(start_index=0, waypoints=target_wp)
             rospy.loginfo("\nWaypoint pushed\n.")
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s", e)
@@ -258,7 +258,7 @@ def main():
 
     # ROS Subscribers.
     rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, WP.wamv)
-    rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, WP.uav)
+    # rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, WP.uav)
     rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=WP.uav_pose)
     rospy.Subscriber('mavros/state', State, callback=WP.monitor_state)
     rospy.Subscriber("/iris_downward_depth_camera/camera/rgb/image_raw/compressed", CompressedImage, WP.artag)
