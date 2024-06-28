@@ -44,6 +44,7 @@ class ApriltagDetector():
         self.lost_time = None
         self.losttime_list = []
         self.tag_altitude = ArTagAltitude()
+        self.tag_altitude.altitude = np.Inf
 
     def callback(self, msg):
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))

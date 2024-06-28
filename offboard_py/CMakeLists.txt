@@ -9,6 +9,7 @@ project(offboard_py)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  std_msgs
   geometry_msgs
   mavros_msgs
   sensor_msgs
@@ -198,6 +199,9 @@ install(PROGRAMS
    detect_apriltag.py
    waypoint.py
    waypoint_rpi.py
+   publish_wp.py
+   psuedo_publisher.py
+   controls.py
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 

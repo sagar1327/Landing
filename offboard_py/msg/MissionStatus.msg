@@ -1,1 +1,4 @@
+std_msgs/Header header
 bool new_mission_request
+bool new_mission_pushed
+bool new_mission_pulled

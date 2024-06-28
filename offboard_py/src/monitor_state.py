@@ -16,12 +16,14 @@ class MonitorState():
         self.initialize_time = rospy.Time.now().to_sec()
         self.takeoff_alt_reached = False
         self.landing_condition_msg = Bool()
-        self.new_mission_msg = MissionStatus()
+        self.mission_status_msg = MissionStatus()
+        self.wp_received = False
 
         rospy.Subscriber('mavros/state', State, callback=self.current_state)
         rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback=self.current_position)
         rospy.Subscriber("/kevin/landing", Bool, callback=self.landing_condition)
-        rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.new_mission)
+        rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
+        self.mission_status_pub = rospy.Publisher("/kevin/mission/status", MissionStatus, queue_size=1)
         self.rate = rospy.Rate(60)
 
         rospy.wait_for_service("/mavros/mission/pull")
@@ -39,8 +41,8 @@ class MonitorState():
         self.current_state_msg = msg
         # print("\nArming status: {}, Mode: {}".format(self.current_state_msg.armed,self.current_state_msg.mode))
 
-    def new_mission(self, msg):
-        self.new_mission_msg = msg
+    def mission_status(self, msg):
+        self.mission_status_msg = msg
 
     def pull_wp(self):
         try:
@@ -69,19 +71,24 @@ def main():
         # Check and wait for arming
         if rospy.Time.now().to_sec() - MS.initialize_time > 1: 
             
-            if not MS.current_state_msg.armed:
-                print("\nVehicle is ready to arm.")
-            elif MS.current_state_msg.armed:
-                print("\nVehicle armed.")
-
             # Check for new mission
-            if MS.new_mission_msg.new_mission_request and MS.current_state_msg.armed:
-                wp_received = MS.pull_wp()
+            if MS.mission_status_msg.new_mission_request and not MS.mission_status_msg.new_mission_pulled:
+                print("\nWaiting for waypoints")
+                MS.wp_received = MS.pull_wp()
+            
+            if MS.wp_received and MS.current_state_msg.mode != 'AUTO.MISSION':
+                MS.mission_status_msg.header.stamp = rospy.Time.now()
+                MS.mission_status_msg.header.frame_id = 'map'
+                MS.mission_status_msg.new_mission_request = True
+                MS.mission_status_msg.new_mission_pushed = True
+                MS.mission_status_msg.new_mission_pulled = True
 
-                # Switch to AUTO.MISSION mode
-                if not wp_received:
-                    print("\nWaiting for waypoints")
-                else:
+                MS.mission_status_pub.publish(MS.mission_status_msg)
+
+                if not MS.current_state_msg.armed:
+                    print("\nVehicle is ready to arm.")
+                elif MS.current_state_msg.armed:
+                    print("\nVehicle armed.")
                     mode = MS.set_mode(custom_mode='AUTO.MISSION')
                     if mode.mode_sent:
                         print("\nMode changed to mission. Executing the current mission.\n")

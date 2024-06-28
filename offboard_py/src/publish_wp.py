@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 import rospy
 from sensor_msgs.msg import NavSatFix
@@ -34,6 +34,7 @@ class PushWaypoints():
 
         rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.wamv_location)
         rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
+        self.mission_status_pub = rospy.Publisher("/kevin/mission/status", MissionStatus, queue_size=1)
         self.rate = rospy.Rate(60)
 
     def wamv_location(self, msg):
@@ -63,11 +64,20 @@ def main():
 
     PW = PushWaypoints()
     while not rospy.is_shutdown():
-        if PW.mission_status_msg.new_mission_request:
+        if PW.mission_status_msg.new_mission_request and not PW.mission_status_msg.new_mission_pulled:
             lat = PW.wamv_coordinate_msg.latitude
             lon = PW.wamv_coordinate_msg.longitude
             alt = 5
             PW.push_wp(lat, lon, alt)
+            print("New waypoint pushed.")
+
+            PW.mission_status_msg.header.stamp = rospy.Time.now()
+            PW.mission_status_msg.header.frame_id = 'map'
+            PW.mission_status_msg.new_mission_request = True
+            PW.mission_status_msg.new_mission_pushed = True
+            PW.mission_status_msg.new_mission_pulled = False
+
+            PW.mission_status_pub.publish(PW.mission_status_msg)
 
         PW.rate.sleep()
 
