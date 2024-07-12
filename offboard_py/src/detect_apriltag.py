@@ -28,14 +28,14 @@ class ApriltagDetector():
                                     quad_contours=True)
         self.detector = ar.Detector(options=options)
         rospy.init_node("kevin_air_tag", anonymous=True)
-        rospy.Subscriber("/rpi/rgb/image_raw/compressed", CompressedImage, self.callback)
+        rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.callback)
         self.tag_img_pub = rospy.Publisher("/kevin/artag/rgb/image_raw", Image, queue_size=1)
         self.tag_pub = rospy.Publisher("/kevin/artag", ArTag, queue_size=1)
         self.tag_altitude_pub = rospy.Publisher("/kevin/artag/altitude", ArTagAltitude, queue_size=1)
         self.rate = rospy.Rate(60)
 
         # Camera and Apriltag
-        self.fov = 63
+        self.fov = 48.70141
         self.image_size = [640, 480]
         self.apx = self.fov/self.image_size[0]
         self.apy = self.fov/self.image_size[1]
@@ -49,19 +49,20 @@ class ApriltagDetector():
     def callback(self, msg):
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))
         self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
-        self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
+        # self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         results = self.detector.detect(gray)
 
+        altitude = []
+        self.ArTag = ArTag()
         if len(results) != 0:
             # print("\nDetected.")
             if self.target_lost:
                 self.losttime_list.append(rospy.Time.now().to_sec() - self.lost_time)
                 print(f"\nLost target for: {rospy.Time.now().to_sec() - self.lost_time}")
+                self.ArTag.duration = rospy.Time.now().to_sec() - self.lost_time
                 self.target_lost = False
-
-            altitude = []
-            self.ArTag = ArTag()	
+	
             for r in results:
                 (ptA, ptB, ptC, ptD) = r.corners
                 ptB = (int(ptB[0]), int(ptB[1]))
@@ -77,9 +78,10 @@ class ApriltagDetector():
                 delta_pixel_y = r.center[1] - self.image_size[1]/2
                 beta = np.abs(delta_pixel_y)*self.apy*np.pi/180
                 theta = np.abs(mean_edge_length_px)*self.apx*np.pi/180
+                # print(theta)
 
                 if r.tag_family.decode("utf-8") == "tag36h11":
-                    actual_target_size = 0.587
+                    actual_target_size = 0.25364
                 elif r.tag_family.decode("utf-8") == "tag25h9":
                     actual_target_size = 0.162
 
@@ -105,6 +107,8 @@ class ApriltagDetector():
             self.tag_altitude.altitude = np.mean(altitude)
             self.target_detected_previously = True
             self.ArTag.detected = True
+            self.ArTag.previously_detected = True
+            self.ArTag.total_tags = len(results)
 
         else:
             if self.target_detected_previously and not self.target_lost:

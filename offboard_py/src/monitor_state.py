@@ -24,7 +24,7 @@ class MonitorState():
         rospy.Subscriber("/kevin/landing", Bool, callback=self.landing_condition)
         rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
         self.mission_status_pub = rospy.Publisher("/kevin/mission/status", MissionStatus, queue_size=1)
-        self.rate = rospy.Rate(60)
+        self.rate = rospy.Rate(1)
 
         rospy.wait_for_service("/mavros/mission/pull")
         self.pull = rospy.ServiceProxy("/mavros/mission/pull", WaypointPull, persistent=True)
@@ -39,7 +39,7 @@ class MonitorState():
 
     def current_state(self, msg):
         self.current_state_msg = msg
-        # print("\nArming status: {}, Mode: {}".format(self.current_state_msg.armed,self.current_state_msg.mode))
+        print("\nArming status: {}, Mode: {}".format(self.current_state_msg.armed,self.current_state_msg.mode))
 
     def mission_status(self, msg):
         self.mission_status_msg = msg
@@ -48,7 +48,7 @@ class MonitorState():
         try:
             wp_count = self.pull().wp_received
             if wp_count > 0:
-                # print("\nReceived waypoint %d. Waypoints pulled.\n", wp_count)
+                # print(f"\nReceived waypoint {wp_count}. Waypoints pulled.\n")
                 return 1
             else:
                 return 0
@@ -86,12 +86,16 @@ def main():
                 MS.mission_status_pub.publish(MS.mission_status_msg)
 
                 if not MS.current_state_msg.armed:
-                    print("\nVehicle is ready to arm.")
+                    pass
+                    # print("\nVehicle is ready to arm.")
                 elif MS.current_state_msg.armed:
-                    print("\nVehicle armed.")
+                    # print("\nVehicle armed.")
+                    # print(MS.current_state_msg.mode)
                     mode = MS.set_mode(custom_mode='AUTO.MISSION')
                     if mode.mode_sent:
                         print("\nMode changed to mission. Executing the current mission.\n")
+
+                    MS.wp_received = False
 
         MS.rate.sleep()
 

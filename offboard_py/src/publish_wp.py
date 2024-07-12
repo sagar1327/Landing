@@ -24,6 +24,7 @@ class PushWaypoints():
         self.single_wp.param3 = 0.0
         self.single_wp.param4 = float('nan')
         self.target_wp = []
+        self.wp_pushed = False
 
         self.wamv_coordinate_msg = NavSatFix()
         self.mission_status_msg = MissionStatus()
@@ -65,11 +66,13 @@ def main():
     PW = PushWaypoints()
     while not rospy.is_shutdown():
         if PW.mission_status_msg.new_mission_request and not PW.mission_status_msg.new_mission_pulled:
-            lat = PW.wamv_coordinate_msg.latitude
-            lon = PW.wamv_coordinate_msg.longitude
-            alt = 5
-            PW.push_wp(lat, lon, alt)
-            print("New waypoint pushed.")
+            if not PW.wp_pushed:
+                lat = -33.72096147064639
+                lon = 150.67130545444115 - 0.00005
+                alt = 5
+                PW.push_wp(lat, lon, alt)
+                # print("New waypoint pushed.")
+                PW.wp_pushed = True
 
             PW.mission_status_msg.header.stamp = rospy.Time.now()
             PW.mission_status_msg.header.frame_id = 'map'
@@ -78,6 +81,9 @@ def main():
             PW.mission_status_msg.new_mission_pulled = False
 
             PW.mission_status_pub.publish(PW.mission_status_msg)
+        else:
+            PW.wp_pushed = False
+            # print("Waypoint pulled.")
 
         PW.rate.sleep()
 

@@ -30,7 +30,8 @@ def main():
 
     while not rospy.is_shutdown():
 
-        if not PP.mission_status_msg.new_mission_pushed or not PP.mission_status_msg.new_mission_pulled:
+        # print(PP.mission_status_msg.new_mission_pushed)
+        if not PP.mission_status_msg.new_mission_pushed:
 
             PP.mission_status_msg.header.stamp = rospy.Time.now()
             PP.mission_status_msg.header.frame_id = 'map'
@@ -38,6 +39,7 @@ def main():
             PP.mission_status_msg.new_mission_pushed = False
             PP.mission_status_msg.new_mission_pulled = False
 
+            # print("If statement running.")
             PP.mission_status_pub.publish(PP.mission_status_msg)
 
         elif PP.current_state_msg.mode == "AUTO.MISSION":
@@ -48,7 +50,11 @@ def main():
             PP.mission_status_msg.new_mission_pushed = True
             PP.mission_status_msg.new_mission_pulled = True
 
+            # print("ElIf statement running.")
             PP.mission_status_pub.publish(PP.mission_status_msg)
+
+        # else:
+            # print("Else statement running.")
 
         PP.rate.sleep()
 
