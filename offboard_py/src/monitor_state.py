@@ -72,30 +72,32 @@ def main():
         if rospy.Time.now().to_sec() - MS.initialize_time > 1: 
             
             # Check for new mission
-            if MS.mission_status_msg.new_mission_request and not MS.mission_status_msg.new_mission_pulled:
-                print("\nWaiting for waypoints")
-                MS.wp_received = MS.pull_wp()
+            if MS.mission_status_msg.new_mission_request:
+                if not MS.mission_status_msg.new_mission_pulled:
+                    print("\nWaiting for waypoints")
+                    MS.wp_received = MS.pull_wp()
             
-            if MS.wp_received and MS.current_state_msg.mode != 'AUTO.MISSION':
-                MS.mission_status_msg.header.stamp = rospy.Time.now()
-                MS.mission_status_msg.header.frame_id = 'map'
-                MS.mission_status_msg.new_mission_request = True
-                MS.mission_status_msg.new_mission_pushed = True
-                MS.mission_status_msg.new_mission_pulled = True
+                if MS.wp_received:
+                    MS.mission_status_msg.header.stamp = rospy.Time.now()
+                    MS.mission_status_msg.header.frame_id = 'map'
+                    MS.mission_status_msg.new_mission_request = True
+                    MS.mission_status_msg.new_mission_pushed = True
+                    MS.mission_status_msg.new_mission_pulled = True
+                    MS.mission_status_msg.mission_complete = False
 
-                MS.mission_status_pub.publish(MS.mission_status_msg)
+                    MS.mission_status_pub.publish(MS.mission_status_msg)
 
-                if not MS.current_state_msg.armed:
-                    pass
-                    # print("\nVehicle is ready to arm.")
-                elif MS.current_state_msg.armed:
-                    # print("\nVehicle armed.")
-                    # print(MS.current_state_msg.mode)
-                    mode = MS.set_mode(custom_mode='AUTO.MISSION')
-                    if mode.mode_sent:
-                        print("\nMode changed to mission. Executing the current mission.\n")
+                    if not MS.current_state_msg.armed:
+                        pass
+                        # print("\nVehicle is ready to arm.")
+                    elif MS.current_state_msg.armed:
+                        # print("\nVehicle armed.")
+                        # print(MS.current_state_msg.mode)
+                        mode = MS.set_mode(custom_mode='AUTO.MISSION')
+                        if mode.mode_sent:
+                            print("\nMode changed to mission. Executing the current mission.\n")
 
-                    MS.wp_received = False
+                        MS.wp_received = False
 
         MS.rate.sleep()
 

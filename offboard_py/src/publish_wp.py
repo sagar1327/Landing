@@ -67,8 +67,8 @@ def main():
     while not rospy.is_shutdown():
         if PW.mission_status_msg.new_mission_request and not PW.mission_status_msg.new_mission_pulled:
             if not PW.wp_pushed:
-                lat = -33.72096147064639
-                lon = 150.67130545444115 - 0.00005
+                lat = PW.wamv_coordinate_msg.latitude #-33.72096147064639
+                lon = PW.wamv_coordinate_msg.longitude - 0.00005 #150.67130545444115 - 0.00005
                 alt = 5
                 PW.push_wp(lat, lon, alt)
                 # print("New waypoint pushed.")
@@ -79,6 +79,7 @@ def main():
             PW.mission_status_msg.new_mission_request = True
             PW.mission_status_msg.new_mission_pushed = True
             PW.mission_status_msg.new_mission_pulled = False
+            PW.mission_status_msg.mission_complete = False
 
             PW.mission_status_pub.publish(PW.mission_status_msg)
         else:

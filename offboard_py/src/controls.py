@@ -2,7 +2,7 @@
 
 import rospy
 import numpy as np
-from offboard_py.msg import ArTag, ArTagAltitude, MissionStatus
+from offboard_py.msg import ArTag, ArTagAltitude, MissionStatus, MissionName
 from mavros_msgs.msg import State, WaypointReached
 from mavros_msgs.srv import SetMode
 from geometry_msgs.msg import  TwistStamped, PoseStamped
@@ -23,30 +23,27 @@ class Controls():
         self.uav_vel_msg = TwistStamped()
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
-        self.wp_reached_msg = WaypointReached()
-        self.landing_condition_msg = Bool()
-        self.landing_condition_msg.data = False
-        self.current_state_msg = State()
         self.mission_status_msg = MissionStatus()
 
         self.deltaS = np.Inf
         self.land_time = None
         self.proximity = []
-        self.landing_condition = False
         self.angle = (0, 0, 0)
         self.hover_alt = None
-        self.artag_lost_time = None
+        self.artag_lost = False
+        self.targetWP_reached_time = None
+        self.mainARTag_detected_time = None
+        self.state_updated = False
+
+        self.mission_status_msg.landing = True
 
         rospy.Subscriber("/kevin/artag", ArTag, callback=self.artag)
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)
         rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=self.uav_pose)
-        rospy.Subscriber("/mavros/mission/reached", WaypointReached, callback=self.wp_reached)
-        rospy.Subscriber('mavros/state', State, callback=self.current_state)
+        # rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
-        self.landing_pub = rospy.Publisher("/kevin/landing", Bool, queue_size=1)
-        self.new_mission_pub = rospy.Publisher("/kevin/mission/status", MissionStatus, queue_size=1)
         self.rate = rospy.Rate(60)
 
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
@@ -59,12 +56,10 @@ class Controls():
 
     def uav_state(self, msg):
         self.uav_state_msg = msg
-
-    def wp_reached(self, msg):
-        self.wp_reached_msg = msg
-
-    def current_state(self, msg):
-        self.current_state_msg = msg
+        self.state_updated = True
+    
+    # def mission_status(self, msg):
+    #     self.mission_status_msg = msg
 
     def uav_pose(self, msg):
         self.current_pose = msg
@@ -161,7 +156,7 @@ class Controls():
         if (rospy.Time.now().to_sec() - self.land_time) > 0.3:
             # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
             print(f"{np.mean(self.proximity)} {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.3 and self.artag_alt_msg.altitude < 1:
+            if np.mean(self.proximity) < 0.3 and self.artag_alt_msg.altitude < 0.8:
                 return 1 
             else:
                 self.land_time = None
@@ -174,140 +169,81 @@ def main():
     Ct = Controls()
     while not rospy.is_shutdown():
 
-        tag_detected = Ct.artag_msg.detected
+        # print(Ct.mission_status_msg)
+        if Ct.mission_status_msg.landing:
+            # if Ct.targetWP_reached_time is None:
+            #     Ct.targetWP_reached_time = rospy.Time.now().to_sec()
 
-        if tag_detected:
+            # if (rospy.Time.now().to_sec()-Ct.targetWP_reached_time) > 3:
+                
+            if Ct.artag_msg.detected:
 
-            # Initiate a timer.
-            if Ct.artag_detected_time is None:
-                Ct.artag_detected_time = rospy.Time.now().to_sec()
+                # Initiate a timer.
+                if Ct.artag_detected_time is None:
+                    Ct.artag_detected_time = rospy.Time.now().to_sec()
 
-            Ct.align()
-            
-            if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1:
-
-                # Check Landing condition.
-                landing_condition = Ct.land()
-                if landing_condition:
-                    Ct.landing_condition_msg.data = True
-                    Ct.landing_pub.publish(Ct.landing_condition_msg)
-                    mode = Ct.set_mode(custom_mode='OFFBOARD')
+                ret = Ct.land()
+                if ret:
+                    mode = Ct.set_mode(custom_mode='AUTO.LAND')
                     if mode.mode_sent:
-                        print("Vehicle now landing.")
+                        Ct.state_updated = False
+                        print("Landing.")
                     break
 
-                if Ct.current_state_msg.mode == "AUTO.LOITER":
-                    mode = Ct.set_mode(custom_mode='OFFBOARD')
-                    if mode.mode_sent:
-                        print("Vehicle in offboard mode.")
-        else:
-            if Ct.artag_msg.previously_detected:
-                if Ct.artag_lost_time is None:
+                # Start publishing required velocity to move towards the target.
+                if "tag25h9" in Ct.artag_msg.family_names and Ct.mainARTag_detected_time is None:
+                    Ct.mainARTag_detected_time = rospy.Time.now().to_sec()
+
+                if Ct.state_updated and Ct.uav_state_msg.mode != "OFFBOARD":
+                    if (Ct.artag_msg.total_tags > 1 and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2) or "tag36h11" not in Ct.artag_msg.family_names:
+                        Ct.align(tagfamily="tag25h9")
+                    else:
+                        Ct.align()  
+
+                    # After few seconds of timer initialization, change the flight mode. 
+                    if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1:
+                        # print("Setting OFFBOARD mode.")
+                        mode = Ct.set_mode(custom_mode="OFFBOARD")
+                        if mode.mode_sent:
+                            print("Vehicle in OFFBOARD mode.")
+                        # Ct.artag_previously_detected = True
+                elif Ct.state_updated and Ct.uav_state_msg.mode == "OFFBOARD":
+                    if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1:
+                        if (Ct.artag_msg.total_tags > 1 and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2) or "tag36h11" not in Ct.artag_msg.family_names:
+                            Ct.align(tagfamily="tag25h9")
+                        else:
+                            Ct.align()
+
+            # Ascend if it was previously detected at the location.
+            elif not Ct.artag_msg.detected and Ct.artag_msg.previously_detected:
+                # print(f"{Ct.artag_msg.duration}")
+                if Ct.artag_detected_time is not None:
                     mode = Ct.set_mode(custom_mode='AUTO.LOITER')
                     if mode.mode_sent:
-                        rospy.loginfo("\nTarget lost but previously detected. Loiter for 1 secs.\n")
-                        Ct.artag_lost_time = rospy.Time.now().to_sec()
+                        print("Target lost but previously detected. Loiter for 1 secs.")
+                    Ct.artag_detected_time = None
 
-                elif (rospy.Time.now().to_sec() - Ct.artag_lost_time) > 0.5:
+                if Ct.artag_msg.duration > 0.5 and Ct.artag_msg.duration < 1:
+                    Ct.uav_vel_msg.header.stamp = rospy.Time.now()
+                    Ct.uav_vel_msg.twist.linear.x = 0
+                    Ct.uav_vel_msg.twist.linear.y = 0
+                    Ct.uav_vel_msg.twist.linear.z = 0.3         
+                elif Ct.artag_msg.duration > 1:
+                    if Ct.uav_state_msg.mode != "OFFBOARD":
+                        mode = Ct.set_mode(custom_mode='OFFBOARD')
+                        if mode.mode_sent:
+                            print("Lost Target for more than 1 secs. Ascending.")
                     Ct.uav_vel_msg.header.stamp = rospy.Time.now()
                     Ct.uav_vel_msg.twist.linear.x = 0
                     Ct.uav_vel_msg.twist.linear.y = 0
                     Ct.uav_vel_msg.twist.linear.z = 0.3
-                
-                elif (rospy.Time.now().to_sec() - Ct.artag_lost_time) > 1:
-                    mode = Ct.set_mode(custom_mode='OFFBOARD')
-                    if mode.mode_sent:
-                        rospy.loginfo_throttle(2,"\nLost Target for more than 1 secs. Ascending.\n")
-                    Ct.uav_vel_msg.header.stamp = rospy.Time.now()
-                    Ct.uav_vel_msg.twist.linear.x = 0
-                    Ct.uav_vel_msg.twist.linear.y = 0
-                    Ct.uav_vel_msg.twist.linear.z = 0.3
-            else:
-                if not Ct.mission_status_msg.new_mission_pushed:
 
-                    Ct.mission_status_msg.header.stamp = rospy.Time.now()
-                    Ct.mission_status_msg.header.frame_id = 'map'
-                    Ct.mission_status_msg.new_mission_request = True
-                    Ct.mission_status_msg.new_mission_pushed = False
-                    Ct.mission_status_msg.new_mission_pulled = False
-
-                elif Ct.current_state_msg.mode == "AUTO.MISSION":
-
-                    Ct.mission_status_msg.header.stamp = rospy.Time.now()
-                    Ct.mission_status_msg.header.frame_id = 'map'
-                    Ct.mission_status_msg.new_mission_request = False
-                    Ct.mission_status_msg.new_mission_pushed = True
-                    Ct.mission_status_msg.new_mission_pulled = True
-
-        #     # Start publishing required velocity to move towards the target.
-        #     if "tag25h9" in Ct.artag_msg.family_names and Ct.mainARTag_detected_time is None:
-        #         Ct.mainARTag_detected_time = rospy.Time.now().to_sec()
-
-        #     if Ct.current_state.mode != "OFFBOARD":
-        #         if "tag36h11" not in Ct.artag_msg.family_names or ("tag25h9" in Ct.artag_msg.family_names \
-        #                         and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2):
-        #             Ct.align(tagfamily="tag25h9")
-        #         else:
-        #             Ct.align()  
-
-        #         # After few seconds of timer initiation, change the flight mode. 
-        #         if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1 and Ct.current_state.mode == "AUTO.LOITER":
-        #             mode = Ct.set_mode(custom_mode='OFFBOARD')
-        #             Ct.artag_previously_detected = True
-        #     else:
-        #         if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1:
-        #             if "tag36h11" not in Ct.artag_family or ("tag25h9" in Ct.artag_family \
-        #                         and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2):
-        #                 Ct.align(tagfamily="tag25h9")
-        #             else:
-        #                 Ct.align()
-
-        #     if Ct.artag_lost_time is not None:
-        #             Ct.artag_lost_time = None
-
-        # # If a artag is not detected at the target waypoint.        
-        # elif Ct.targetCt_reached and (rospy.Time.now().to_sec() - Ct.targetCt_reached_time) > 1 and Ct.frame_updated and len(Ct.artag_center) == 0:
-
-        #     # Ascend if it was previously detected at the location.
-        #     if Ct.artag_previously_detected:
-        #         if Ct.artag_lost_time is None:
-        #             mode = set_mode(custom_mode='AUTO.LOITER')
-        #             if mode.mode_sent:
-        #                 rospy.loginfo("\nTarget lost but previously detected. Loiter for 2 secs.\n")
-        #                 Ct.artag_lost_time = rospy.Time.now().to_sec()
-
-        #         elif (rospy.Time.now().to_sec() - Ct.artag_lost_time) > 1:
-        #             Ct.uav_vel_msg.header.stamp = rospy.Time.now()
-        #             Ct.uav_vel_msg.twist.linear.x = 0
-        #             Ct.uav_vel_msg.twist.linear.y = 0
-        #             Ct.uav_vel_msg.twist.linear.z = 0.3
-                
-        #         elif (rospy.Time.now().to_sec() - Ct.artag_lost_time) > 2:
-        #             if Ct.current_state.mode == 'AUTO.LOITER':
-        #                 mode = set_mode(custom_mode='OFFBOARD')
-        #                 if mode.mode_sent:
-        #                     rospy.loginfo_throttle(2,"\nLost Target for more than 2 secs. Ascending.\n")
-        #             Ct.uav_vel_msg.header.stamp = rospy.Time.now()
-        #             Ct.uav_vel_msg.twist.linear.x = 0
-        #             Ct.uav_vel_msg.twist.linear.y = 0
-        #             Ct.uav_vel_msg.twist.linear.z = 0.3
-                
-        #         if Ct.artag_detected_time is not None:
-        #             Ct.artag_detected_time = None
-
-        #     # Move to a different waypoint.
-        #     else:
-        #         rospy.loginfo(f"\nPushing Ct:\n1. Lat - {Ct.wamv_coordinate.latitude}\n2. Lon - {Ct.wamv_coordinate.longitude + (np.random.rand(1) - 1)/10000}\n3. Alt - 6\n")
-        #         Ct.push_Ct(push,pull,Ct.wamv_coordinate.latitude,(Ct.wamv_coordinate.longitude + (np.random.rand(1) - 1)/10000),6)
-        #         mode = set_mode(custom_mode='AUTO.MISSION')
-        #         if mode.mode_sent:
-        #             rospy.loginfo_throttle(2,"\nMoving to the next Ct.\n")
-        #         Ct.targetCt_reached = False
-
-
-        Ct.new_mission_pub.publish(Ct.mission_status_msg)
+            # else:
+            #     print("Waiting")            
+        
+        
         Ct.uav_vel_pub.publish(Ct.uav_vel_msg)
-        Ct.landing_pub.publish(Ct.landing_condition_msg)
+        Ct.state_updated = False
         Ct.rate.sleep()
 
 
