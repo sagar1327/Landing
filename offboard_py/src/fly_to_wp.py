@@ -61,7 +61,10 @@ class FlyToWP():
     def wamv_coordinate(self, msg):
         self.wamv_coordinate_msg = msg
 
-        self.search_wps = [[msg.latitude - 0.00005,msg.longitude - 0.00005]]
+        self.search_wps = [[msg.latitude,msg.longitude],
+                           [msg.latitude,msg.longitude - 0.00007],
+                           [msg.latitude - 0.00003,msg.longitude - 0.00006],
+                           [msg.latitude + 0.00003,msg.longitude - 0.00006]]
         
         self.wamv_coordinate_received = True
 
@@ -118,7 +121,7 @@ def main():
         # Push and Pull initial waypoint of the boat.
         if FTW.mission_status_msg.new_mission_request and FTW.wamv_coordinate_received:
             if not FTW.mission_status_msg.new_mission_pushed and not FTW.mission_status_msg.new_mission_pulled:
-                wp_idx = 0
+                wp_idx = np.random.randint(0,4)
                 print(f"Wp idx: {wp_idx}")
                 print(f"New mission Request.\nPushing wp:\n1. Lat - {FTW.search_wps[wp_idx][0]}\n2. Lon - {FTW.search_wps[wp_idx][1]}\n3. Alt - 5")
                 print(rospy.Time.now().to_sec())

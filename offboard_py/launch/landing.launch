@@ -2,8 +2,8 @@
 <launch>
     <node name="FLy_to_waypoint" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" />
     <node name="Detect_ARTag" pkg="offboard_py" type="detect_apriltag.py" required="true" output="screen" />
-    <!-- <node name="Controls" pkg="offboard_py" type="controls.py" required="true" output="screen" />
-    <node name="Publish_Waypoint" pkg="offboard_py" type="publish_wp.py" required="true" output="screen" />
+    <node name="Controls" pkg="offboard_py" type="controls.py" required="true" output="screen" />
+    <!--<node name="Publish_Waypoint" pkg="offboard_py" type="publish_wp.py" required="true" output="screen" />
     <node name="Monitor_State" pkg="offboard_py" type="monitor_state.py" required="true" output="screen" /> -->
 </launch>
 
