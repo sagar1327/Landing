@@ -55,7 +55,7 @@ class ApriltagDetector():
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         results = self.detector.detect(gray)
 
-        altitude = []
+        altitude = 0.0
         self.ArTag = ArTag()
         self.ArTag.header.frame_id = 'map'
         if len(results) != 0:
@@ -84,11 +84,16 @@ class ApriltagDetector():
 
                 if r.tag_family.decode("utf-8") == "tag36h11":
                     actual_target_size = 0.59
-                elif r.tag_family.decode("utf-8") == "tag25h9":
+                    altitude = (actual_target_size/(2*np.tan(theta/2)))
+                else:
                     actual_target_size = 0.262
+                    altitude = (actual_target_size/(2*np.tan(theta/2)))
+                # elif r.tag_family.decode("utf-8") == "tag25h9":
+                #     actual_target_size = 0.262
+                #     altitude = (actual_target_size/(2*np.tan(theta/2)))
 
                 # altitude.append(np.sqrt(np.square(actual_target_size/(2*np.tan(theta/2)))/(np.square(np.tan(beta)+1))))
-                altitude.append(actual_target_size/(2*np.tan(theta/2)))
+                # altitude.append(actual_target_size/(2*np.tan(theta/2)))
 
                 # print("\nTag: {}, Altitude: {}".format(r.tag_family.decode("utf-8"), altitude))
 

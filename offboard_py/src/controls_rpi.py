@@ -67,7 +67,7 @@ class Controls():
     def rc_callback(self,msg):
         # Check if the RC switch is in the "Position control" position (Means manual control).
         if msg.channels[4] < 1300:
-            rospy.loginfo_once("\nVehicle is in position mode (RC switch). Shutting down script.")
+            print("\nVehicle is in position mode (RC switch). Shutting down script.")
             self.manual_control = True
             rospy.signal_shutdown("\nManual control activated.")
 
@@ -115,7 +115,7 @@ class Controls():
 
         # Calculate the linear velocity based on the distance.
         if tag_alt > 0.5:
-            gain = 0.3
+            gain = 0.1
         else:
             gain = 0.1
         linear_vel = gain * self.deltaS
@@ -137,7 +137,7 @@ class Controls():
                 self.hover_alt =  tag_alt#Hover at 1.3 m.
             delta_alt = self.hover_alt - tag_alt
             print(f"Hovering at {tag_alt}. Need to move {delta_alt}")
-            gain_alt = 0.5
+            gain_alt = 0.1
             self.uav_vel_msg.twist.linear.z = gain_alt*delta_alt
             
             # Set the linear velocity components in the x and y directions.
@@ -168,8 +168,8 @@ class Controls():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 0.6:
             # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
-            # print(f"{np.mean(self.proximity)} {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.2 and self.artag_alt_msg.altitude < 0.6:
+            print(f"{np.mean(self.proximity)} {self.artag_alt_msg.altitude}")
+            if np.mean(self.proximity) < 0.2 and self.artag_alt_msg.altitude < 1.5:
                 return 1 
             else:
                 self.land_time = None
@@ -237,12 +237,12 @@ def main():
                         print("Target lost but previously detected. Loiter for 3 secs.")
                     Ct.artag_detected_time = None
 
-                if Ct.artag_msg.duration > 1 and Ct.artag_msg.duration < 2:
+                if Ct.artag_msg.duration > 1 and Ct.artag_msg.duration < 3:
                     Ct.uav_vel_msg.header.stamp = rospy.Time.now()
                     Ct.uav_vel_msg.twist.linear.x = 0
                     Ct.uav_vel_msg.twist.linear.y = 0
                     Ct.uav_vel_msg.twist.linear.z = 0.3         
-                elif Ct.artag_msg.duration > 2:
+                elif Ct.artag_msg.duration > 3:
                     if Ct.state_updated and Ct.uav_state_msg.mode != "OFFBOARD":
                         mode = Ct.set_mode(custom_mode='OFFBOARD')
                         if mode.mode_sent:
@@ -250,7 +250,7 @@ def main():
                     Ct.uav_vel_msg.header.stamp = rospy.Time.now()
                     Ct.uav_vel_msg.twist.linear.x = 0
                     Ct.uav_vel_msg.twist.linear.y = 0
-                    Ct.uav_vel_msg.twist.linear.z = 0.3
+                    Ct.uav_vel_msg.twist.linear.z = 0.2
 
             # else:
             #     print("Waiting")            
