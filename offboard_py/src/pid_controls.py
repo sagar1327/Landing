@@ -2,12 +2,12 @@
 
 import rospy
 import numpy as np
-from offboard_py.msg import ArTag, ArTagAltitude, MissionStatus, MissionName
+from offboard_py.msg import ArTag, ArTagAltitude, MissionStatus, SetPoint
 from mavros_msgs.msg import State, WaypointReached
 from mavros_msgs.srv import SetMode
 from geometry_msgs.msg import  TwistStamped, PoseStamped
 from tf.transformations import euler_from_quaternion
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 
 
 class Controls():
@@ -24,12 +24,17 @@ class Controls():
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
         self.mission_status_msg = MissionStatus()
+        self.setpoint = SetPoint()
+        self.landing_seq_msg = String()
 
         self.current_deltaS = np.Inf
-        self.previous_deltaS = 0.0
+        # self.previous_deltaS = 0.0
+        self.previous_x = 0.0
+        self.previous_y = 0.0
         self.previous_time = None
-        self.integral = 0.0
-        self.derivative = 0.0
+        # self.integral = 0.0
+        self.integral_x = 0.0
+        self.integral_y = 0.0
         self.land_time = None
         self.proximity = []
         self.angle = (0, 0, 0)
@@ -38,8 +43,9 @@ class Controls():
         self.targetWP_reached_time = None
         self.mainARTag_detected_time = None
         self.state_updated = False
-        self.landing_sequences = ["Hovering and Aligning", "Descending", "Landing"]
+        self.landing_sequences = ["Hovering and Aligning", "Descending", "Holding", "Landing"]
         self.current_seq = None
+        self.previous_tag_family = None
 
         # self.mission_status_msg.landing = True
 
@@ -50,6 +56,8 @@ class Controls():
         rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
+        self.setpoint_pub = rospy.Publisher("/kevin/pid/setpoint", SetPoint, queue_size=1)
+        self.landing_seq_pub = rospy.Publisher("/kevin/landing/sequence", String, queue_size=1)
         self.rate = rospy.Rate(60)
 
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
@@ -72,6 +80,7 @@ class Controls():
         self.angle = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
 
     def align(self, tagfamily="tag36h11"):
+        current_tag_family = tagfamily
         apx = 48.70141/640
         apy = 48.70141/480
         tag_centers = self.artag_msg.centers
@@ -89,71 +98,126 @@ class Controls():
         deltaS_img = np.sqrt(np.square(deltax_img) + np.square(deltay_img))
         theta_img = np.arctan2(deltay_img, deltax_img)
 
-        # #Global frame.
+        # Global frame.
         self.current_deltaS = deltaS_img
 
-        #PID controller
-        kp = 0.5;ki = 0.5;kd = 0.05
-        if self.previous_time is None:
-            self.previous_time = rospy.Time.now().to_sec()
-        current_time = rospy.Time.now().to_sec()
-        dt = current_time - self.previous_time
-        self.integral += self.current_deltaS*dt
-        self.derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
-
-        linear_vel = kp*self.current_deltaS + ki*self.integral + kd*self.derivative
-        self.previous_deltaS = self.current_deltaS
-        self.previous_time = current_time
+        if current_tag_family != self.previous_tag_family:
+            self.setpoint = SetPoint()
+        self.previous_tag_family = current_tag_family
 
         # Calculate the angle between the estimated position and the target position
         theta_horizontal = theta_img+self.angle[2]-np.pi/2 #Angle to the target in x-y plane
         theta_vertical = np.arctan2(self.current_deltaS, tag_alt) #Angle to the target in relative to straight down plane
 
-        # Calculate the linear velocity based on the distance.
-        # if tag_alt > 0.5:
-        #     gain = 0.3
-        # else:
-        #     gain = 1
-        # linear_vel = gain * self.current_deltaS
-        # linear_vel = 0.8 if linear_vel > 0.8 else linear_vel #Avoid going too fast to be safe was 0.5.
-        ##################################
-        desired_heading = np.pi/2
-        current_heading = self.angle[2]
-        gain_heading = 0.2
-        angular_z_vel = gain_heading*(desired_heading-current_heading)
-        self.uav_vel_msg.twist.angular.z = angular_z_vel
+        if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
+            self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
+            self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
+
+        # PD controller
+        # kp = 1;ki = 0.0;kd = 0.1
+        # linear_vel = kp*self.current_deltaS
+        kpx = 0.7;kix = 0.0;kdx = 0.08
+        kpy = 0.5;kiy = 0.08;kdy = 0.06
+        deltax = self.current_deltaS*np.cos(theta_horizontal)
+        deltay = self.current_deltaS*np.sin(theta_horizontal)
+        linear_vel_x = kpx*deltax
+        linear_vel_y = kpy*deltay
+
+        # desired_heading = np.pi/2
+        # current_heading = self.angle[2]
+        # gain_heading = 0.2
+        # angular_z_vel = gain_heading*(desired_heading-current_heading)
+        # self.uav_vel_msg.twist.angular.z = angular_z_vel
 
         # Publish the correction position if the distance is greater than 0.2.
-        if theta_vertical > 8*np.pi/180:
-            if self.uav_state_msg.mode == "OFFBOARD":
-                self.current_seq = self.landing_sequences[0]
+        if theta_vertical <= 5*np.pi/180:
+            if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
+                self.current_seq = self.landing_sequences[1]
+                self.landing_seq_msg.data = self.current_seq
                 rospy.loginfo_throttle(2,self.current_seq)
-            #P controller to maintain altitude.
+
+                # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
+                #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
+                #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
+
+                if self.previous_time is None:
+                    self.previous_time = rospy.Time.now().to_sec()
+                current_time = rospy.Time.now().to_sec()
+                dt = current_time - self.previous_time
+                # self.integral += self.current_deltaS
+                # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
+                self.integral_x += deltax*dt
+                self.integral_y += deltay*dt
+                derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
+                derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
+
+                linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
+                linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
+                self.previous_x = deltax
+                self.previous_y = deltay
+                self.previous_time = current_time
+                # linear_vel = linear_vel + ki*self.integral + kd*derivative
+                # self.previous_deltaS = self.current_deltaS
+                # self.previous_time = current_time
+
+            
+            # print(f"Descending")
+            # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
+            # Set the linear velocity components in the x and y directions.
+            self.uav_vel_msg.header.stamp = rospy.Time.now()
+            self.uav_vel_msg.twist.linear.x = linear_vel_x
+            self.uav_vel_msg.twist.linear.y = linear_vel_y
+            self.uav_vel_msg.twist.linear.z = -0.3 #Descend with 0.2 m/s.
+
+            if self.hover_alt is not None:
+                self.hover_alt = None
+
+            # self.setpoint = SetPoint()
+        
+        else:
+            if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
+                self.current_seq = self.landing_sequences[0]
+                self.landing_seq_msg.data = self.current_seq
+                rospy.loginfo_throttle(2,self.current_seq)
+
+                # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
+                #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
+                #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
+
+                if self.previous_time is None:
+                    self.previous_time = rospy.Time.now().to_sec()
+                current_time = rospy.Time.now().to_sec()
+                dt = current_time - self.previous_time
+                # self.integral += self.current_deltaS
+                # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
+                self.integral_x += deltax*dt
+                self.integral_y += deltay*dt
+                derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
+                derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
+
+                linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
+                linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
+                self.previous_x = deltax
+                self.previous_y = deltay
+                self.previous_time = current_time
+                # linear_vel = linear_vel + ki*self.integral + kd*derivative
+                # self.previous_deltaS = self.current_deltaS
+                # self.previous_time = current_time
+                
+            # P controller to maintain altitude.
             if self.hover_alt is None:
                 self.hover_alt =  tag_alt#Hover at 1.3 m.
             delta_alt = self.hover_alt - tag_alt
             print(f"Hovering at {tag_alt}. Need to move {delta_alt}")
-            gain_alt = 0.8
+            # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
+            gain_alt = 0.5
             self.uav_vel_msg.twist.linear.z = gain_alt*delta_alt
             
             # Set the linear velocity components in the x and y directions.
             self.uav_vel_msg.header.stamp = rospy.Time.now()
-            self.uav_vel_msg.twist.linear.x = linear_vel * np.cos(theta_horizontal)
-            self.uav_vel_msg.twist.linear.y = linear_vel * np.sin(theta_horizontal)
+            self.uav_vel_msg.twist.linear.x = linear_vel_x
+            self.uav_vel_msg.twist.linear.y = linear_vel_y
 
-        else:
-            if self.uav_state_msg.mode == "OFFBOARD":
-                self.current_seq = self.landing_sequences[1]
-                rospy.loginfo_throttle(2,self.current_seq)
-            # Set the linear velocity components in the x and y directions.
-            self.uav_vel_msg.header.stamp = rospy.Time.now()
-            self.uav_vel_msg.twist.linear.x = linear_vel * np.cos(theta_horizontal)
-            self.uav_vel_msg.twist.linear.y = linear_vel * np.sin(theta_horizontal)
-            self.uav_vel_msg.twist.linear.z = -0.5 #Descend with 0.2 m/s.
-
-            if self.hover_alt is not None:
-                self.hover_alt = None
-        
         # rospy.loginfo_throttle(2,f"\nlinearx_vel: {self.uav_vel_msg.twist.linear.x}\nlineary_vel: {self.uav_vel_msg.twist.linear.y}"+
         #               f"\nlinearz_vel: {self.uav_vel_msg.twist.linear.z}\n")
 
@@ -197,6 +261,7 @@ def main():
                     if mode.mode_sent:
                         Ct.state_updated = False
                         Ct.current_seq = Ct.landing_sequences[2]
+                        Ct.landing_seq_msg.data = Ct.current_seq
                         print(Ct.current_seq)
                     break
 
@@ -207,6 +272,7 @@ def main():
                 if Ct.state_updated and Ct.uav_state_msg.mode != "OFFBOARD":
                     if (Ct.artag_msg.total_tags > 1 and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2) or "tag36h11" not in Ct.artag_msg.family_names:
                         Ct.align(tagfamily="tag25h9")
+                        # Ct.align()
                     else:
                         Ct.align()  
 
@@ -221,11 +287,12 @@ def main():
                     if (rospy.Time.now().to_sec() - Ct.artag_detected_time) > 1:
                         if (Ct.artag_msg.total_tags > 1 and (rospy.Time.now().to_sec() - Ct.mainARTag_detected_time) > 2) or "tag36h11" not in Ct.artag_msg.family_names:
                             Ct.align(tagfamily="tag25h9")
+                            # Ct.align()
                         else:
                             Ct.align()
 
             # Ascend if it was previously detected at the location.
-            elif not Ct.current_seq == "Hovering and Aligning" and not Ct.artag_msg.detected and Ct.artag_msg.previously_detected:
+            elif Ct.state_updated and not Ct.current_seq == "Hovering and Aligning" and not Ct.artag_msg.detected and Ct.artag_msg.previously_detected:
                 # print(f"{Ct.artag_msg.duration}")
                 if Ct.artag_detected_time is not None:
                     mode = Ct.set_mode(custom_mode='AUTO.LOITER')
@@ -248,11 +315,15 @@ def main():
                     Ct.uav_vel_msg.twist.linear.y = 0
                     Ct.uav_vel_msg.twist.linear.z = 0.3
 
+                Ct.setpoint = SetPoint()
+
             # else:
             #     print("Waiting")            
         
         
         Ct.uav_vel_pub.publish(Ct.uav_vel_msg)
+        Ct.setpoint_pub.publish(Ct.setpoint)
+        Ct.landing_seq_pub.publish(Ct.landing_seq_msg)
         Ct.state_updated = False
         Ct.rate.sleep()
 

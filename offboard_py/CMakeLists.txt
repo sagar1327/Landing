@@ -61,6 +61,7 @@ add_message_files(
    ArTagAltitude.msg
    MissionStatus.msg
    MissionName.msg
+   SetPoint.msg
 )
 
 ## Generate services in the 'srv' folder
