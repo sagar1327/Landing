@@ -15,7 +15,7 @@ class ApriltagDetector():
     def __init__(self):
         self.bridge = CvBridge()
         self.cv_image = []
-        options = ar.DetectorOptions(families=['tag36h11','tag25h9'],
+        options = ar.DetectorOptions(families=['tag36h11'],
                                     border=1,
                                     nthreads=4,
                                     quad_decimate=1.0,

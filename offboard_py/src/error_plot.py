@@ -35,7 +35,7 @@ class Height:
 
         self.setup_plot()
 
-        # rospy.on_shutdown(self.save_file)
+        rospy.on_shutdown(self.save_file)
 
     def setup_plot(self):
         self.fig1 = plt.figure()
