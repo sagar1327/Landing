@@ -1,0 +1,7 @@
+kevin_mission:
+  # Input the target waypoint
+  waypoint: [0.0, 0.0]
+  # Order UAV to fly
+  Fly: "False"
+  # UAV reached the target waypoint?
+  complete: "False"

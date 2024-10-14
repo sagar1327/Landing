@@ -1,0 +1,5 @@
+# List of all UAV tasks. Select tasks you want to execute.
+Task:
+  name: ["UAV Search & Report", "UAV Replenishment"]
+  selected: [true, false]
+	

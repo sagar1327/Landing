@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="Detect_ARTag" pkg="offboard_py" type="detect_apriltag_rpi.py" required="true" output="screen" />
+    <node name="Controls" pkg="offboard_py" type="controls_rpi.py" required="true" output="screen" />
+</launch>
+
