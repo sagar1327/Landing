@@ -11,7 +11,7 @@ import cv2 as cv
 import json
 
 class ApriltagDetector():
-    
+    """Publish a compressed image with marked contour of an April Tags, Information about all detected tag, and estimated altitude."""
     def __init__(self):
         self.bridge = CvBridge()
         self.cv_image = []
@@ -28,8 +28,8 @@ class ApriltagDetector():
         self.detector = ar.Detector(options=options)
         rospy.init_node("kevin_air_tag", anonymous=True)
         rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.callback)
-        self.tag_img_pub = rospy.Publisher("/kevin/artag/rgb/image_raw", Image, queue_size=1)
-        self.tag_pub = rospy.Publisher("/kevin/artag", ArTag, queue_size=1)
+        self.tag_img_pub = rospy.Publisher("/kevin/camera/artag/rgb/image_raw/compressed", CompressedImage, queue_size=1)
+        self.tag_pub = rospy.Publisher("/kevin/artag/info", ArTag, queue_size=1)
         self.tag_altitude_pub = rospy.Publisher("/kevin/artag/altitude", ArTagAltitude, queue_size=1)
         self.rate = rospy.Rate(60)
 
@@ -42,11 +42,13 @@ class ApriltagDetector():
         self.target_lost = False
         self.lost_time = None
         self.losttime_list = []
+        self.tag_img = CompressedImage()
+        self.tag_img.header.frame_id = "map"
+        self.ArTag = ArTag()
+        self.ArTag.header.frame_id = 'map'
         self.tag_altitude = ArTagAltitude()
         self.tag_altitude.header.frame_id = 'map'
         self.tag_altitude.altitude = np.Inf
-
-        rospy.spin()
 
     def callback(self, msg):
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))
@@ -122,41 +124,33 @@ class ApriltagDetector():
             # else:    
             #     print("\nNot Detected.")
 
-        img_msg = self.bridge.cv2_to_imgmsg(self.cv_image, 'bgr8')
-        self.tag_img_pub.publish(img_msg)
+        self.tag_img = self.bridge.cv2_to_compressed_imgmsg(self.cv_image,"jpg")
 
-        self.ArTag.header.stamp = rospy.Time.now()
-        self.tag_pub.publish(self.ArTag)
-
-        self.tag_altitude.header.stamp = rospy.Time.now()
-        self.tag_altitude_pub.publish(self.tag_altitude)
-
-    def save_file(self):
-        with open('/home/sagar/catkin_ws/src/Landing/offboard_py/src/logs/Apriltag/target_lost_times.txt', 'w') as file:
-            file.write(json.dumps(self.losttime_list))
+    # def save_file(self):
+    #     with open('/home/sagar/catkin_ws/src/Landing/offboard_py/src/logs/Apriltag/target_lost_times.txt', 'w') as file:
+    #         file.write(json.dumps(self.losttime_list))
 
 
-# def main():
-    # DT = ApriltagDetector()
+def main():
+    DT = ApriltagDetector()
 
-    # rospy.spin()
+    while not rospy.is_shutdown():   
 
-    # while not rospy.is_shutdown():
-    #     DT.ArTag.header.stamp = rospy.Time.now()
-    #     DT.ArTag.header.frame_id = 'map'
-    #     DT.tag_pub.publish(DT.ArTag)
+        DT.tag_img.header.stamp = rospy.Time.now()
+        DT.tag_img_pub.publish(DT.tag_img)
 
-    #     DT.tag_altitude.header.stamp = rospy.Time.now()
-    #     DT.tag_altitude.header.frame_id = 'map'
-    #     DT.tag_altitude_pub.publish(DT.tag_altitude)
+        DT.ArTag.header.stamp = rospy.Time.now()
+        DT.tag_pub.publish(DT.ArTag)
 
-    #     DT.rate.sleep()
+        DT.tag_altitude.header.stamp = rospy.Time.now()
+        DT.tag_altitude_pub.publish(DT.tag_altitude)
 
-        # rospy.on_shutdown(self.save_file)
+        DT.rate.sleep()
+
+        # rospy.on_shutdown(DT.save_file)
 
 if __name__ == '__main__':
     try:
-        # main()
-        ApriltagDetector()
+        main()
     except rospy.ROSInterruptException:
         pass
