@@ -45,7 +45,7 @@ class FlyToWP():
         rospy.wait_for_service('/mavros/set_mode')
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
 
-        rospy.Subscriber("/kevin/target_wp", NavSatFix, callback=self.waypoint)
+        rospy.Subscriber("/minion/kevin/target_wp", NavSatFix, callback=self.waypoint)
         rospy.Subscriber('mavros/state', State, callback=self.uav_state)
         rospy.Subscriber("/minion/kevin/fly_to_wp", Bool, callback=self.flyToWp)
 
