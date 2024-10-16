@@ -5,7 +5,7 @@ from sensor_msgs.msg import NavSatFix
 
 
 class TestPublisher():
-    """A psuedo publisher to publish custom waypoints for gazebo and testing purposes.
+    """(Only for Gazebo testing) A psuedo publisher to publish custom waypoints for gazebo and testing purposes.
        Real Time: Ask Boat to directly publish target waypoint in /minion/kevin/target_wp topic. In that case, no need to use this node."""
     def __init__(self):
 

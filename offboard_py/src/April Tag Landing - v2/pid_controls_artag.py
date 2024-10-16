@@ -23,7 +23,7 @@ class Controls():
         self.uav_vel_msg = TwistStamped()
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
-        self.mission_status_msg = MissionStatus()
+        self.land_on_boat_msg = Bool()
         self.setpoint = SetPoint()
         self.landing_seq_msg = String()
 
@@ -49,11 +49,11 @@ class Controls():
 
         # self.mission_status_msg.landing = True
 
-        rospy.Subscriber("/kevin/artag", ArTag, callback=self.artag)
+        rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)
         rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=self.uav_pose)
-        rospy.Subscriber("/kevin/mission/status", MissionStatus, callback=self.mission_status)
+        rospy.Subscriber("/kevin/land_permission", Bool, callback=self.landing_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
         self.setpoint_pub = rospy.Publisher("/kevin/pid/setpoint", SetPoint, queue_size=1)
@@ -72,8 +72,8 @@ class Controls():
         self.uav_state_msg = msg
         self.state_updated = True
     
-    def mission_status(self, msg):
-        self.mission_status_msg = msg
+    def landing_status(self, msg):
+        self.land_on_boat_msg = msg
 
     def uav_pose(self, msg):
         self.current_pose = msg
@@ -116,110 +116,109 @@ class Controls():
         # PD controller
         # kp = 1;ki = 0.0;kd = 0.1
         # linear_vel = kp*self.current_deltaS
-        kpx = 1.5;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
+        kpx = 0.5;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
         kpy = 0.5;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
         deltax = self.current_deltaS*np.cos(theta_horizontal)
         deltay = self.current_deltaS*np.sin(theta_horizontal)
         linear_vel_x = kpx*deltax
         linear_vel_y = kpy*deltay
 
-        # desired_heading = np.pi/2
-        # current_heading = self.angle[2]
-        # gain_heading = 0.2
-        # angular_z_vel = gain_heading*(desired_heading-current_heading)
-        # self.uav_vel_msg.twist.angular.z = angular_z_vel
+        desired_heading = np.pi/2
+        current_heading = self.angle[2]
+        gain_heading = 0.2
+        angular_z_vel = gain_heading*(desired_heading-current_heading)
+        self.uav_vel_msg.twist.angular.z = angular_z_vel
 
-        # Publish the correction position if the distance is greater than 0.2.
-        # if theta_vertical <= 5*np.pi/180 and tag_alt > 3:
-        #     if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
-        #         self.current_seq = self.landing_sequences[1]
-        #         self.landing_seq_msg.data = self.current_seq
-        #         rospy.loginfo_throttle(2,self.current_seq)
+        if theta_vertical <= 5*np.pi/180: #and tag_alt > 3:
+            if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
+                self.current_seq = self.landing_sequences[1]
+                self.landing_seq_msg.data = self.current_seq
+                rospy.loginfo_throttle(2,self.current_seq)
 
-        #         # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
-        #         #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
-        #         #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
+                # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
+                #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
+                #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
 
-        #         if self.previous_time is None:
-        #             self.previous_time = rospy.Time.now().to_sec()
-        #         current_time = rospy.Time.now().to_sec()
-        #         dt = current_time - self.previous_time
-        #         # self.integral += self.current_deltaS
-        #         # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
-        #         self.integral_x += deltax*dt
-        #         self.integral_y += deltay*dt
-        #         derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
-        #         derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
+                if self.previous_time is None:
+                    self.previous_time = rospy.Time.now().to_sec()
+                current_time = rospy.Time.now().to_sec()
+                dt = current_time - self.previous_time
+                # self.integral += self.current_deltaS
+                # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
+                self.integral_x += deltax*dt
+                self.integral_y += deltay*dt
+                derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
+                derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
 
-        #         linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
-        #         linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
-        #         self.previous_x = deltax
-        #         self.previous_y = deltay
-        #         self.previous_time = current_time
-        #         # linear_vel = linear_vel + ki*self.integral + kd*derivative
-        #         # self.previous_deltaS = self.current_deltaS
-        #         # self.previous_time = current_time
+                linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
+                linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
+                self.previous_x = deltax
+                self.previous_y = deltay
+                self.previous_time = current_time
+                # linear_vel = linear_vel + ki*self.integral + kd*derivative
+                # self.previous_deltaS = self.current_deltaS
+                # self.previous_time = current_time
 
             
-        #     # print(f"Descending")
-        #     # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
-        #     # Set the linear velocity components in the x and y directions.
-        #     self.uav_vel_msg.header.stamp = rospy.Time.now()
-        #     self.uav_vel_msg.twist.linear.x = linear_vel_x
-        #     self.uav_vel_msg.twist.linear.y = linear_vel_y
-        #     self.uav_vel_msg.twist.linear.z = -0.3 #Descend with 0.2 m/s.
+            # print(f"Descending")
+            # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
+            # Set the linear velocity components in the x and y directions.
+            self.uav_vel_msg.header.stamp = rospy.Time.now()
+            self.uav_vel_msg.twist.linear.x = linear_vel_x
+            self.uav_vel_msg.twist.linear.y = linear_vel_y
+            self.uav_vel_msg.twist.linear.z = -0.3 #Descend with 0.2 m/s.
 
-        #     if self.hover_alt is not None:
-        #         self.hover_alt = None
+            if self.hover_alt is not None:
+                self.hover_alt = None
 
-        #     # self.setpoint = SetPoint()
+            # self.setpoint = SetPoint()
         
-        # else:
-        if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
-            self.current_seq = self.landing_sequences[0]
-            self.landing_seq_msg.data = self.current_seq
-            rospy.loginfo_throttle(2,self.current_seq)
+        else:
+            if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
+                self.current_seq = self.landing_sequences[0]
+                self.landing_seq_msg.data = self.current_seq
+                rospy.loginfo_throttle(2,self.current_seq)
 
-            # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
-            #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
-            #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
+                # if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
+                #     self.setpoint.setpoint.x = self.current_deltaS*np.cos(theta_horizontal)
+                #     self.setpoint.setpoint.y = self.current_deltaS*np.sin(theta_horizontal)
 
-            if self.previous_time is None:
-                self.previous_time = rospy.Time.now().to_sec()
-            current_time = rospy.Time.now().to_sec()
-            dt = current_time - self.previous_time
-            # self.integral += self.current_deltaS
-            # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
-            self.integral_x += deltax*dt
-            self.integral_y += deltay*dt
-            derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
-            derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
+                if self.previous_time is None:
+                    self.previous_time = rospy.Time.now().to_sec()
+                current_time = rospy.Time.now().to_sec()
+                dt = current_time - self.previous_time
+                # self.integral += self.current_deltaS
+                # derivative = (self.current_deltaS - self.previous_deltaS)/dt if dt > 0 else 0
+                self.integral_x += deltax*dt
+                self.integral_y += deltay*dt
+                derivative_x = (deltax - self.previous_x)/dt if dt > 0 else 0
+                derivative_y = (deltay - self.previous_y)/dt if dt > 0 else 0
 
-            linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
-            linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
-            self.previous_x = deltax
-            self.previous_y = deltay
-            self.previous_time = current_time
-            # linear_vel = linear_vel + ki*self.integral + kd*derivative
-            # self.previous_deltaS = self.current_deltaS
-            # self.previous_time = current_time
+                linear_vel_x = linear_vel_x + kix*self.integral_x + kdx*derivative_x
+                linear_vel_y = linear_vel_y + kiy*self.integral_y + kdy*derivative_y
+                self.previous_x = deltax
+                self.previous_y = deltay
+                self.previous_time = current_time
+                # linear_vel = linear_vel + ki*self.integral + kd*derivative
+                # self.previous_deltaS = self.current_deltaS
+                # self.previous_time = current_time
             
-        # P controller to maintain altitude.
-        if self.hover_alt is None:
-            self.hover_alt =  tag_alt#Hover at 1.3 m.
-        delta_alt = self.hover_alt - tag_alt
-        print(f"Hovering at {tag_alt}. Need to move {delta_alt}")
-        # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
-        gain_alt = 0.5
-        self.uav_vel_msg.twist.linear.z = gain_alt*delta_alt
-        
-        # Set the linear velocity components in the x and y directions.
-        self.uav_vel_msg.header.stamp = rospy.Time.now()
-        self.uav_vel_msg.twist.linear.x = linear_vel_x
-        self.uav_vel_msg.twist.linear.y = linear_vel_y
+                # P controller to maintain altitude.
+                if self.hover_alt is None:
+                    self.hover_alt =  tag_alt#Hover at 1.3 m.
+                delta_alt = self.hover_alt - tag_alt
+                print(f"Hovering at {tag_alt}. Need to move {delta_alt}")
+                # print(f"Linear x: {linear_vel_x} and Linear y: {linear_vel_y}")
+                gain_alt = 0.5
+                self.uav_vel_msg.twist.linear.z = gain_alt*delta_alt
+                
+                # Set the linear velocity components in the x and y directions.
+                self.uav_vel_msg.header.stamp = rospy.Time.now()
+                self.uav_vel_msg.twist.linear.x = linear_vel_x
+                self.uav_vel_msg.twist.linear.y = linear_vel_y
 
-        # rospy.loginfo_throttle(2,f"\nlinearx_vel: {self.uav_vel_msg.twist.linear.x}\nlineary_vel: {self.uav_vel_msg.twist.linear.y}"+
-        #               f"\nlinearz_vel: {self.uav_vel_msg.twist.linear.z}\n")
+                # rospy.loginfo_throttle(2,f"\nlinearx_vel: {self.uav_vel_msg.twist.linear.x}\nlineary_vel: {self.uav_vel_msg.twist.linear.y}"+
+                #               f"\nlinearz_vel: {self.uav_vel_msg.twist.linear.z}\n")
 
     def land(self):
         if self.land_time is None:
@@ -242,13 +241,14 @@ def main():
     Ct = Controls()
     while not rospy.is_shutdown():
 
-        # print(Ct.mission_status_msg)
-        if Ct.mission_status_msg.landing:
+        # print(Ct.land_on_boat_msg.data)
+        if Ct.land_on_boat_msg.data:
             # if Ct.targetWP_reached_time is None:
             #     Ct.targetWP_reached_time = rospy.Time.now().to_sec()
 
             # if (rospy.Time.now().to_sec()-Ct.targetWP_reached_time) > 3:
-                
+
+            # print(f"Detected: {Ct.artag_msg.detected}")    
             if Ct.artag_msg.detected:
 
                 # Initiate a timer.

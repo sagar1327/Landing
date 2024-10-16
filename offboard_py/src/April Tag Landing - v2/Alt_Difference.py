@@ -7,7 +7,11 @@ from offboard_py.msg import ArTagAltitude
 
 
 class DeltaAlt():
-    """Find the difference between the current z-position given by GPS module and estimated height using April Tag."""
+    """Debugging file: Find the difference between the current z-position given by GPS module and 
+       estimated height using April Tag.
+       
+       Requires: 1) Local Position, 2) Height estimate using April Tag.
+       Print: Current difference in GPS and tag alt."""
     def __init__(self):
 
         rospy.init_node("uav_control_node",anonymous=True)

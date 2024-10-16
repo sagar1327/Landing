@@ -11,11 +11,16 @@ import cv2 as cv
 import json
 
 class ApriltagDetector():
-    """Publish a compressed image with marked contour of an April Tags, Information about all detected tag, and estimated altitude."""
+    """Publish a compressed image with marked contour of an April Tags, Information about all 
+       detected tag, and estimated altitude.
+       
+       Requires: Image message
+       Outputs: 1) Image message with the contour of the tag, 2) Information about the tag,
+                3) Estimated tag altitude"""
     def __init__(self):
         self.bridge = CvBridge()
         self.cv_image = []
-        options = ar.DetectorOptions(families=['tag36h11'],
+        options = ar.DetectorOptions(families=['tag36h11','tag25h9'],
                                     border=1,
                                     nthreads=4,
                                     quad_decimate=1.0,

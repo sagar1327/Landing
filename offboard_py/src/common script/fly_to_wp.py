@@ -11,7 +11,9 @@ from offboard_py.msg import MissionStatus, ArTag
 
 
 class FlyToWP():
-    """A node to make the drone fly to a waypoint."""
+    """A node to make the drone fly to a waypoint.
+       Requires: 1) waypoint coordinates. 2) Permission to fly.
+       Outputs: True if reached target waypoint and false otherwise."""
     def __init__(self):
 
         rospy.init_node("Fly_to_wp",anonymous=True)
