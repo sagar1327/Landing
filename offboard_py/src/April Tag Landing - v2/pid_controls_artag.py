@@ -260,7 +260,7 @@ def main():
                     mode = Ct.set_mode(custom_mode='AUTO.LAND')
                     if mode.mode_sent:
                         Ct.state_updated = False
-                        Ct.current_seq = Ct.landing_sequences[2]
+                        Ct.current_seq = Ct.landing_sequences[3]
                         Ct.landing_seq_msg.data = Ct.current_seq
                         print(Ct.current_seq)
                     break

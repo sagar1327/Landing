@@ -17,11 +17,11 @@ class LandOnTag():
         self.wp_reached = Bool()
         self.flyToWp_msg = Bool()
         self.land_on_boat = Bool()
-        self.land_on_boat.data = False
+        self.land_on_boat.data = True
 
         # A psuedo variable to store boat status. Must be replaced later
         self.boat_status_msg = Bool()
-        self.boat_status_msg.data = True
+        self.boat_status_msg.data = False
 
         self.artag_msg = ArTag()
         self.flyToWp_msg.data = False
@@ -68,19 +68,19 @@ def main():
         # Conditions:
         # 1) If boat is ready and the UAV hasn't reached the given waypoint (Start of a mission.)
         # 2) The UAV reached the given waypoint but no april tag found. Give permission to fly to next waypoint.
-        if (LOT.boat_status_msg.data and not LOT.wp_reached.data) or \
-           (LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and not LOT.artag_msg.detected and not LOT.land_on_boat.data):
+        if (LOT.boat_status_msg.data and not LOT.wp_reached.data): #or \
+           #(LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and not LOT.artag_msg.detected and not LOT.land_on_boat.data):
             LOT.flyToWp_msg.data = True
-            if LOT.wp_reached.data and not LOT.artag_msg.detected:
-                print("No April Tag.")      
-        else:
-            LOT.flyToWp_msg.data = False
+                # if LOT.wp_reached.data and not LOT.artag_msg.detected:
+                #     print("No April Tag.")      
+        # else:
+        #     LOT.flyToWp_msg.data = False
 
-        if (LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and LOT.artag_msg.detected):
-            LOT.land_on_boat.data = True
+        # if (LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and LOT.artag_msg.detected):
+        #     LOT.land_on_boat.data = True
 
         LOT.flyToWp_pub.publish(LOT.flyToWp_msg)
-        LOT.land_on_boat_pub.publish(LOT.land_on_boat)
+        # LOT.land_on_boat_pub.publish(LOT.land_on_boat)
 
         LOT.rate.sleep()
 
