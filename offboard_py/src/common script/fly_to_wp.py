@@ -47,7 +47,7 @@ class FlyToWP():
         rospy.wait_for_service('/mavros/set_mode')
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
 
-        rospy.Subscriber("/minion/kevin/target_wp", NavSatFix, callback=self.waypoint)
+        # rospy.Subscriber("/minion/kevin/target_wp", NavSatFix, callback=self.waypoint)
         rospy.Subscriber('mavros/state', State, callback=self.uav_state)
         rospy.Subscriber("/minion/kevin/fly_to_wp", Bool, callback=self.flyToWp)
 
@@ -100,7 +100,7 @@ def main():
 
     while not rospy.is_shutdown():
         
-        if FTW.flyToWp_msg.data and FTW.new_wp_received:
+        if FTW.flyToWp_msg.data: #and FTW.new_wp_received:
             if not FTW.wp_pushed:
                 print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 6")
                 FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],6)
