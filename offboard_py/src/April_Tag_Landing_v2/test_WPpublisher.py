@@ -5,7 +5,7 @@ from sensor_msgs.msg import NavSatFix
 
 
 class TestPublisher():
-    """(Only for Gazebo testing) A psuedo publisher to publish custom waypoints for gazebo and testing purposes.
+    """(Only for testing) A psuedo publisher to publish custom waypoints for gazebo and testing purposes.
        Real Time: Ask Boat to directly publish target waypoint in /minion/kevin/target_wp topic. In that case, no need to use this node."""
     def __init__(self):
 
@@ -15,8 +15,8 @@ class TestPublisher():
         # rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.wamv_coordinate)
 
         self.target_wp_msg = NavSatFix()
-        self.target_wp_msg.latitude = 29.182665
-        self.target_wp_msg.longitude = -81.044093
+        self.target_wp_msg.latitude = 29.1826324
+        self.target_wp_msg.longitude = -81.04413
         self.target_wp_msg.header.frame_id = "map"
         self.target_wp_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=3)
 

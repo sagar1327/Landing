@@ -28,8 +28,8 @@ class ApriltagDetector():
         self.detector = ar.Detector(options=options)
         rospy.init_node("kevin_air_tag", anonymous=True)
         rospy.Subscriber("/kevin/rgb/image_raw/compressed", CompressedImage, self.callback)
-        self.tag_img_pub = rospy.Publisher("/kevin/artag/rgb/image_raw", Image, queue_size=1)
-        self.tag_pub = rospy.Publisher("/kevin/artag", ArTag, queue_size=1)
+        self.tag_img_pub = rospy.Publisher("/kevin/camera/artag/rgb/image_raw/compressed", CompressedImage, queue_size=1)
+        self.tag_pub = rospy.Publisher("/kevin/artag/info", ArTag, queue_size=1)
         self.tag_altitude_pub = rospy.Publisher("/kevin/artag/altitude", ArTagAltitude, queue_size=1)
         self.rate = rospy.Rate(60)
 
@@ -42,6 +42,11 @@ class ApriltagDetector():
         self.target_lost = False
         self.lost_time = None
         self.losttime_list = []
+        self.tag_img_msg = CompressedImage()
+        self.tag_img_msg.header.frame_id = "map"
+        self.tag_img_msg.format = 'jpeg'
+        self.ArTag = ArTag()
+        self.ArTag.header.frame_id = 'map'
         self.tag_altitude = ArTagAltitude()
         self.tag_altitude.header.frame_id = 'map'
         self.tag_altitude.altitude = np.Inf
@@ -59,10 +64,10 @@ class ApriltagDetector():
         self.ArTag = ArTag()
         self.ArTag.header.frame_id = 'map'
         if len(results) != 0:
-            print("\nDetected.")
+            # print("\nDetected.")
             if self.target_lost:
                 self.losttime_list.append(rospy.Time.now().to_sec() - self.lost_time)
-                print(f"\nLost target for: {rospy.Time.now().to_sec() - self.lost_time}")
+                # print(f"\nLost target for: {rospy.Time.now().to_sec() - self.lost_time}")
                 self.target_lost = False
 	
             for r in results:
@@ -125,16 +130,17 @@ class ApriltagDetector():
                 self.ArTag.previously_detected = True
                 self.ArTag.duration = rospy.Time.now().to_sec() - self.lost_time
             # else:    
-            print("Not Detected.")
-
-        img_msg = self.bridge.cv2_to_imgmsg(self.cv_image, 'bgr8')
-        self.tag_img_pub.publish(img_msg)
+            # print("Not Detected.")
 
         self.ArTag.header.stamp = rospy.Time.now()
         self.tag_pub.publish(self.ArTag)
 
         self.tag_altitude.header.stamp = rospy.Time.now()
         self.tag_altitude_pub.publish(self.tag_altitude)
+
+        encoded_img = cv.imencode('.jpg', self.cv_image, [int(cv.IMWRITE_JPEG_QUALITY), 5])[1]  # Adjust quality here
+        self.tag_img_msg.data = encoded_img.tostring()
+        self.tag_img_pub.publish(self.tag_img_msg)
 
     def save_file(self):
         with open('/home/sagar/catkin_ws/src/Landing/offboard_py/src/logs/Apriltag/target_lost_times.txt', 'w') as file:

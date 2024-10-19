@@ -100,8 +100,8 @@ def main():
     while not rospy.is_shutdown():
         if FTW.flyToWp_msg.data and FTW.new_wp_received:
             if not FTW.wp_pushed:
-                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 6")
-                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],6)
+                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 4")
+                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],4)
 
             if FTW.state_updated and FTW.uav_state_msg.armed:
                 mode = FTW.set_mode(custom_mode='AUTO.MISSION')

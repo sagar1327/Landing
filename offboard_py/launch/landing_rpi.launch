@@ -3,6 +3,7 @@
     <!-- <arg name="Date"/>
     <arg name="Time"/> -->
 
+    <!-- For test: 10/19/2024-->
     <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" />
     <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing_rpi.py" required="true" output="screen" />
     <node name="Manual_Takeover" pkg="offboard_py" type="manual_takeover.py" required="true" output="screen" />
