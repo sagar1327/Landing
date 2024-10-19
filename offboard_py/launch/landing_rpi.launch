@@ -1,6 +1,21 @@
 <?xml version="1.0"?>
 <launch>
-    <node name="Detect_ARTag" pkg="offboard_py" type="detect_apriltag_rpi.py" required="true" output="screen" />
-    <node name="Controls" pkg="offboard_py" type="controls_rpi.py" required="true" output="screen" />
+    <!-- <arg name="Date"/>
+    <arg name="Time"/> -->
+
+    <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" />
+    <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing_rpi.py" required="true" output="screen" />
+    <node name="Manual_Takeover" pkg="offboard_py" type="manual_takeover.py" required="true" output="screen" />
+    <node name="FLy_to_WP" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" />
+    <node name="Detect_Apriltag" pkg="offboard_py" type="detect_apriltag_rpi.py" required="true" output="screen" />
+    <node name="PIDControls" pkg="offboard_py" type="pid_controls_artag_rpi.py" required="true" output="screen" />
+
+    <!-- <node name="Controls" pkg="offboard_py" type="pid_controls_artag.py" required="true" output="screen" /> -->
+    <!-- <node name="Error_Plot" pkg="offboard_py" type="error_plot.py" required="false" output="screen" 
+          args="072724 21.11"/> -->
+    <!--<node name="Publish_Waypoint" pkg="offboard_py" type="publish_wp.py" required="true" output="screen" />
+    <node name="Monitor_State" pkg="offboard_py" type="monitor_state.py" required="true" output="screen" /> -->
+    <!-- <rosparam file="$(find offboard_py)/config/boat_waypoints_tolerance.yaml" command="load" />
+    <rosparam file="$(find offboard_py)/config/tasks.yaml" command="load" />  -->
 </launch>
 

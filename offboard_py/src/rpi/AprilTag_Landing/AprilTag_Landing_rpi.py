@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import Bool, String
 from offboard_py.msg import ArTag
-from mavros_msgs.msg import *
+from mavros_msgs.msg import RCIn
 
 class LandOnTag():
     """This node sends the flying permission message to the UAV in condition:
@@ -21,7 +21,7 @@ class LandOnTag():
 
         # A psuedo variable to store boat status. Must be replaced later
         self.boat_status_msg = Bool()
-        self.boat_status_msg.data = True
+        self.boat_status_msg.data = False
 
         self.artag_msg = ArTag()
         self.flyToWp_msg.data = False
@@ -29,10 +29,9 @@ class LandOnTag():
 
         rospy.Subscriber("/kevin/waypoint_reached", Bool, callback=self.waypoint)
         rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
-        rospy.Subscriber('mavros/rc/in', RCIn, callback=self.rc_callback)
 
         # A psuedo subscriber to get the boat status. Must be changed later.
-        rospy.Subscriber("/boat/status", Bool, callback=self.boat_status)
+        rospy.Subscriber("/minion/kevin/status", Bool, callback=self.boat_status)
 
         self.flyToWp_pub = rospy.Publisher("/minion/kevin/fly_to_wp", Bool, queue_size=1)
         self.land_on_boat_pub = rospy.Publisher("/kevin/land_permission", Bool, queue_size=1)
@@ -50,13 +49,6 @@ class LandOnTag():
 
     def boat_status(self, msg):
         self.boat_status_msg = msg
-
-    def rc_callback(self,msg):
-        # Check if the RC switch is in the "Position control" position (Means manual control).
-        if msg.channels[4] < 1300:
-            rospy.loginfo_once("\nVehicle is in position mode (RC switch). Shutting down script.")
-            self.manual_control = True
-            rospy.signal_shutdown("\nManual control activated.")
         
 
 

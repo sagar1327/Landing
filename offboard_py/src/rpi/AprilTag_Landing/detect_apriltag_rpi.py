@@ -27,7 +27,7 @@ class ApriltagDetector():
                                     quad_contours=True)
         self.detector = ar.Detector(options=options)
         rospy.init_node("kevin_air_tag", anonymous=True)
-        rospy.Subscriber("/rpi/rgb/image_raw/compressed", CompressedImage, self.callback)
+        rospy.Subscriber("/kevin/rgb/image_raw/compressed", CompressedImage, self.callback)
         self.tag_img_pub = rospy.Publisher("/kevin/artag/rgb/image_raw", Image, queue_size=1)
         self.tag_pub = rospy.Publisher("/kevin/artag", ArTag, queue_size=1)
         self.tag_altitude_pub = rospy.Publisher("/kevin/artag/altitude", ArTagAltitude, queue_size=1)

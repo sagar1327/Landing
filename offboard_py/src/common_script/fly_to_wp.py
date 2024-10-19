@@ -17,7 +17,6 @@ class FlyToWP():
     def __init__(self):
 
         rospy.init_node("Fly_to_wp",anonymous=True)
-
         self.uav_state_msg = State()
         self.single_wp = Waypoint()
         self.flyToWp_msg = Bool()
@@ -35,9 +34,9 @@ class FlyToWP():
         self.single_wp.param4 = float('nan')
         self.wp_pushed = False
 
-        self.search_wps = [0, 0]
+        self.search_wps = [0,0]
         self.wp_pushed = False
-        self.new_wp_received = False
+        self.new_wp_received = True
         self.state_updated = False
         
         rospy.wait_for_service("/mavros/mission/pull")
@@ -99,7 +98,6 @@ def main():
     FTW = FlyToWP()
 
     while not rospy.is_shutdown():
-        
         if FTW.flyToWp_msg.data and FTW.new_wp_received:
             if not FTW.wp_pushed:
                 print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 6")

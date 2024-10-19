@@ -8,7 +8,7 @@ from cv_bridge import CvBridge
 class Talker():
     def __init__(self):
         rospy.init_node('rpi_img_pub', anonymous=True)
-        self.pub = rospy.Publisher('rpi/rgb/image_raw/compressed', CompressedImage, queue_size=100)
+        self.pub = rospy.Publisher('/kevin/rgb/image_raw/compressed', CompressedImage, queue_size=100)
         self.rate = rospy.Rate(60)  # 60hz
         self.bridge = CvBridge()
 
