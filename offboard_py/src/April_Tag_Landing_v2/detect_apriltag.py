@@ -47,8 +47,9 @@ class ApriltagDetector():
         self.target_lost = False
         self.lost_time = None
         self.losttime_list = []
-        self.tag_img = CompressedImage()
-        self.tag_img.header.frame_id = "map"
+        self.tag_img_msg = CompressedImage()
+        self.tag_img_msg.header.frame_id = "map"
+        self.tag_img_msg.format = 'jpeg'
         self.ArTag = ArTag()
         self.ArTag.header.frame_id = 'map'
         self.tag_altitude = ArTagAltitude()
@@ -129,7 +130,8 @@ class ApriltagDetector():
             # else:    
             #     print("\nNot Detected.")
 
-        self.tag_img = self.bridge.cv2_to_compressed_imgmsg(self.cv_image,"jpg")
+        encoded_img = cv.imencode('.jpg', self.cv_image, [int(cv.IMWRITE_JPEG_QUALITY), 5])[1]  # Adjust quality here
+        self.tag_img_msg.data = encoded_img.tostring()
 
     # def save_file(self):
     #     with open('/home/sagar/catkin_ws/src/Landing/offboard_py/src/logs/Apriltag/target_lost_times.txt', 'w') as file:
@@ -141,8 +143,8 @@ def main():
 
     while not rospy.is_shutdown():   
 
-        DT.tag_img.header.stamp = rospy.Time.now()
-        DT.tag_img_pub.publish(DT.tag_img)
+        DT.tag_img_msg.header.stamp = rospy.Time.now()
+        DT.tag_img_pub.publish(DT.tag_img_msg)
 
         DT.ArTag.header.stamp = rospy.Time.now()
         DT.tag_pub.publish(DT.ArTag)
