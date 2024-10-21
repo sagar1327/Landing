@@ -47,8 +47,6 @@ class Controls():
         self.current_seq = None
         self.previous_tag_family = None
 
-        # self.mission_status_msg.landing = True
-
         rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)

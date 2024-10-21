@@ -11,8 +11,8 @@ class Talker():
         rospy.init_node('rpi_img_pub', anonymous=True)
         self.comp_img_msg = CompressedImage()
         self.normal_img_msg = Image()
-        self.comp_pub = rospy.Publisher('/kevin/rgb/image_raw/compressed', CompressedImage, queue_size=1)
-        self.normal_pub = rospy.Publisher('/kevin/rgb/image_raw/', Image, queue_size=1)
+        self.comp_pub = rospy.Publisher('/kevin/camera/rgb/image_raw/compressed', CompressedImage, queue_size=1)
+        self.normal_pub = rospy.Publisher('/kevin/camera/rgb/image_raw/', Image, queue_size=1)
         self.rate = rospy.Rate(60)  # 60hz
         self.bridge = CvBridge()
 
