@@ -16,8 +16,10 @@ class TestPublisher():
         rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.wamv_coordinate)
 
         self.target_wp_msg = NavSatFix()
-        self.target_wp_msg.latitude = 29.1826324
-        self.target_wp_msg.longitude = -81.04413
+        # For when manually giving the waypoints.
+        # self.target_wp_msg.latitude = 29.1826494
+        # self.target_wp_msg.longitude = -81.0441421
+
         self.target_wp_msg.header.frame_id = "map"
         self.target_wp_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=3)
 

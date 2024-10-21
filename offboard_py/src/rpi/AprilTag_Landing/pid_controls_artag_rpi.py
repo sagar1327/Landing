@@ -24,8 +24,7 @@ class Controls():
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
         self.land_on_boat_msg = Bool()
-        # For test: 10/19/2024
-        self.land_on_boat_msg.data = True
+        self.land_on_boat_msg.data = False
         self.setpoint = SetPoint()
         self.landing_seq_msg = String()
 
@@ -55,8 +54,7 @@ class Controls():
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)
         rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=self.uav_pose)
-        # Commenting for test: 10/19/2024
-        # rospy.Subscriber("/kevin/land_permission", Bool, callback=self.landing_status)
+        rospy.Subscriber("/kevin/land_permission", Bool, callback=self.landing_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
         self.setpoint_pub = rospy.Publisher("/kevin/pid/setpoint", SetPoint, queue_size=1)
@@ -119,8 +117,8 @@ class Controls():
         # PD controller
         # kp = 1;ki = 0.0;kd = 0.1
         # linear_vel = kp*self.current_deltaS
-        kpx = 0.2;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
-        kpy = 0.3;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
+        kpx = 0.3;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
+        kpy = 0.5;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
         deltax = self.current_deltaS*np.cos(theta_horizontal)
         deltay = self.current_deltaS*np.sin(theta_horizontal)
         linear_vel_x = kpx*deltax
@@ -231,7 +229,7 @@ class Controls():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
             print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.5 and self.artag_alt_msg.altitude < 1:
+            if np.mean(self.proximity) < 0.8 and self.artag_alt_msg.altitude < 1.5:
                 return 1 
             else:
                 self.land_time = None

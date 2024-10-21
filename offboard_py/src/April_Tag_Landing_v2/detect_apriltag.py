@@ -32,7 +32,7 @@ class ApriltagDetector():
                                     quad_contours=True)
         self.detector = ar.Detector(options=options)
         rospy.init_node("kevin_air_tag", anonymous=True)
-        rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.callback)
+        rospy.Subscriber("/kevin/camera/rgb/image_raw", Image, self.callback)
         self.tag_img_pub = rospy.Publisher("/kevin/camera/artag/rgb/image_raw/compressed", CompressedImage, queue_size=1)
         self.tag_pub = rospy.Publisher("/kevin/artag/info", ArTag, queue_size=1)
         self.tag_altitude_pub = rospy.Publisher("/kevin/artag/altitude", ArTagAltitude, queue_size=1)
@@ -58,7 +58,7 @@ class ApriltagDetector():
 
     def callback(self, msg):
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))
-        self.cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
+        self.cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         # self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         results = self.detector.detect(gray)

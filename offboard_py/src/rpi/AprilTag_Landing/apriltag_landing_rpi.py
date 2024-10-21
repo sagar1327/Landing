@@ -21,7 +21,7 @@ class LandOnTag():
 
         # A psuedo variable to store boat status. Must be replaced later
         self.boat_status_msg = Bool()
-        # For test: 10/19/2024
+        # If not connected to boat, set this to "True"
         self.boat_status_msg.data = True
 
         self.artag_msg = ArTag()
