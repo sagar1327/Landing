@@ -3,11 +3,12 @@
     <!-- <arg name="Date"/>
     <arg name="Time"/> -->
 
-    <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" />
+    <!-- <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" /> -->
+    <node name="Publish_TargetWP" pkg="offboard_py" type="utm_to_lla.py" required="true" output="screen" />
     <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing.py" required="true" output="screen" />
     <node name="FLy_to_WP" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" />
-    <node name="Detect_Apriltag" pkg="offboard_py" type="detect_apriltag.py" required="true" output="screen" />
-    <node name="PIDControls" pkg="offboard_py" type="pid_controls_artag.py" required="true" output="screen" />
+    <!-- <node name="Detect_Apriltag" pkg="offboard_py" type="detect_apriltag.py" required="true" output="screen" /> -->
+    <!-- <node name="PIDControls" pkg="offboard_py" type="pid_controls_artag.py" required="true" output="screen" /> -->
 
     <!-- <node name="Error_Plot" pkg="offboard_py" type="error_plot.py" required="false" output="screen" 
           args="072724 21.11"/> -->
