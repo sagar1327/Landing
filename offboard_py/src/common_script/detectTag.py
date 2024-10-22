@@ -34,7 +34,7 @@ class DetetcAprilTag():
         #     print("Error opening the camera.")
         #     return
 
-        # while True:
+        # while self.cap.isOpened():
         #     self.ret, self.frame = self.cap.read()
         #     if not self.ret:
         #         print("Error reading frame from the camera.")
