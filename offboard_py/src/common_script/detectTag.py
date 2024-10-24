@@ -21,38 +21,39 @@ class DetetcAprilTag():
 
         self.gray = []
 
-        # When manually inputting image path
-        self.frame = cv.imread("/home/sagar/personal_ws/src/Landing/offboard_py/src/UAV_Search_and_Report/5.png")
-        self.detectTag()
-        cv.imshow('Processed Image', self.frame)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-
-        # # When using camera
-        # self.cap = cv.VideoCapture("/dev/video0", cv.CAP_V4L)
-        # if not self.cap.isOpened():
-        #     print("Error opening the camera.")
-        #     return
-
-        # while self.cap.isOpened():
-        #     self.ret, self.frame = self.cap.read()
-        #     if not self.ret:
-        #         print("Error reading frame from the camera.")
-        #         break
-
-        #     self.detectTag()
-        #     cv.imshow('Processed Image', self.frame)
-        #     cv.waitKey(0)
-
-        # # Release the camera when the node is interrupted
-        # self.cap.release()
+        # ## When manually inputting image path
+        # self.frame = cv.imread("/home/sagar/personal_ws/src/Landing/offboard_py/src/common_script/testTag.png")
+        # self.detectTag()
+        # cv.imshow('Processed Image', self.gray)
+        # cv.waitKey(0)
         # cv.destroyAllWindows()
+
+        ## When using camera
+        self.cap = cv.VideoCapture("/dev/video0", cv.CAP_V4L)
+        if not self.cap.isOpened():
+            print("Error opening the camera.")
+            return
+
+        while self.cap.isOpened():
+            self.ret, self.frame = self.cap.read()
+            if not self.ret:
+                print("Error reading frame from the camera.")
+                break
+
+            self.detectTag()
+            cv.imshow('Processed Image', self.frame)
+            if cv.waitKey(1) == ord('q'):
+                break
+
+        # Release the camera when the node is interrupted
+        self.cap.release()
+        cv.destroyAllWindows()
 
     def detectTag(self):
         self.gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
-        target_idx = self.gray > 150
-        self.gray[target_idx] = 255
-        self.gray[~target_idx] = 0
+        # target_idx = self.gray > 150
+        # self.gray[target_idx] = 255
+        # self.gray[~target_idx] = 0
         results = self.detector.detect(self.gray)
 
         if len(results) != 0:

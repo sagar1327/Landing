@@ -60,9 +60,9 @@ class ApriltagDetector():
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
-        target_idx = gray > 150
-        gray[target_idx] = 255
-        gray[~target_idx] = 0
+        # target_idx = gray > 150
+        # gray[target_idx] = 255
+        # gray[~target_idx] = 0
         results = self.detector.detect(gray)
 
         altitude = []
