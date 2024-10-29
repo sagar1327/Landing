@@ -13,12 +13,12 @@ class TestPublisher():
         
         self.wamv_coordinate_msg = NavSatFix()
         self.coordinate_received = False
-        rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.wamv_coordinate)
+        # rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.wamv_coordinate)
 
         self.target_wp_msg = NavSatFix()
-        # For when manually giving the waypoints.
-        # self.target_wp_msg.latitude = 29.1826494
-        # self.target_wp_msg.longitude = -81.0441421
+        ### For when manually giving the waypoints.
+        self.target_wp_msg.latitude = 29.200041
+        self.target_wp_msg.longitude = -81.007635
 
         self.target_wp_msg.header.frame_id = "map"
         self.target_wp_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=3)
@@ -36,10 +36,10 @@ def main():
     TP = TestPublisher()
 
     while not rospy.is_shutdown():
-        if TP.coordinate_received:
-            TP.target_wp_msg = TP.wamv_coordinate_msg
-            # Change the lat and long recieved from boat if required.
-            TP.target_wp_msg.longitude = TP.target_wp_msg.longitude - 0.00006
+        # if TP.coordinate_received:
+        #     TP.target_wp_msg = TP.wamv_coordinate_msg
+        #     # Change the lat and long recieved from boat if required.
+        #     TP.target_wp_msg.longitude = TP.target_wp_msg.longitude - 0.00006
 
         TP.target_wp_pub.publish(TP.target_wp_msg)
 
