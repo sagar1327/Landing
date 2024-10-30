@@ -56,7 +56,7 @@ class ApriltagDetector():
     def callback(self, msg):
         # rospy.loginfo("{}x{}\n".format(msg.height, msg.width))
         self.cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-        self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
+        # self.cv_image = cv.rotate(self.cv_image, cv.ROTATE_180)
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         results = self.detector.detect(gray)
 
