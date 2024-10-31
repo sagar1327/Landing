@@ -27,8 +27,8 @@ class UTMToLLA():
 
         ## Solo testing the drone
         self.utm_coordinate_msg = PointStamped()
-        self.utm_coordinate_msg.point.x = 0.65 # Change value as required
-        self.utm_coordinate_msg.point.y = 0.08 # Change value as required
+        self.utm_coordinate_msg.point.x = -6.0 # Change value as required
+        self.utm_coordinate_msg.point.y = 0.0 # Change value as required
         self.uav_coordinate_msg = NavSatFix()
         self.uav_coordinate_received = False
         rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.uav_coordinate)
@@ -73,21 +73,26 @@ def main():
         #     UTL.lla_coordinate_pub.publish(UTL.lla_coordinate_msg)
 
         ## Solo testing
-        if UTL.uav_coordinate_received and UTL.utm_coordinate_msg.point.x != 0.0:
-            start_lat_in_rad = math.radians(UTL.boat_coordinate_msg.latitude)
+        if UTL.uav_coordinate_received and (UTL.utm_coordinate_msg.point.x != 0.0 or UTL.utm_coordinate_msg.point.y != 0.0):
+            start_lat_in_rad = math.radians(UTL.uav_coordinate_msg.latitude)
             meters_per_degree_lat = 111320
             delta_lat = UTL.utm_coordinate_msg.point.y / meters_per_degree_lat
             meters_per_degree_lon = 111320 * math.cos(start_lat_in_rad)
             delta_long = UTL.utm_coordinate_msg.point.x / meters_per_degree_lon
 
-            UTL.lla_coordinate_msg.latitude = UTL.boat_coordinate_msg.latitude + delta_lat
-            UTL.lla_coordinate_msg.longitude = UTL.boat_coordinate_msg.longitude + delta_long
+            UTL.lla_coordinate_msg.latitude = UTL.uav_coordinate_msg.latitude + delta_lat
+            UTL.lla_coordinate_msg.longitude = UTL.uav_coordinate_msg.longitude + delta_long
 
             UTL.lla_coordinate_msg.header.stamp = rospy.Time.now()
             UTL.lla_coordinate_pub.publish(UTL.lla_coordinate_msg)
 
 
         UTL.rate.sleep()
+
+####### TODO #########
+# Get the waypoint of boat/drone
+# Store it in variable so that it doesn't change everyloop
+# Use that to calculate the new wp,
 
 
 if __name__ == "__main__":

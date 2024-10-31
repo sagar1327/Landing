@@ -3,8 +3,10 @@
     <!-- <arg name="Date"/>
     <arg name="Time"/> -->
 
-    <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" />
-    <!-- <node name="UTM_to_LLA" pkg="offboard_py" type="utm_to_lla.py" required="true" output="screen" /> -->
+    <!--If using utm_to_lla no need to publish psuedo wp.-->
+    <!-- <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" /> -->
+    
+    <node name="UTM_to_LLA" pkg="offboard_py" type="utm_to_lla.py" required="true" output="screen" />
     <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing_rpi.py" required="true" output="screen" />
     <node name="Manual_Takeover" pkg="offboard_py" type="manual_takeover.py" required="true" output="screen" />
     <node name="FLy_to_WP" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" />

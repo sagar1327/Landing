@@ -228,7 +228,7 @@ class Controls():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
             print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.3 and self.artag_alt_msg.altitude < 1:
+            if np.mean(self.proximity) < 0.8 and self.artag_alt_msg.altitude < 1.5:
                 return 1 
             else:
                 self.land_time = None
