@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_msgs
   tf
   cv_bridge
-  aruco
   message_generation
 )
 
