@@ -48,7 +48,7 @@ class UTMToLLA():
         self.boat_coordinate_msg = msg
         self.boat_coordinate_received = True
 
-    def boat_coordinate(self, msg):
+    def uav_coordinate(self, msg):
         self.uav_coordinate_msg = msg
         self.uav_coordinate_received = True
 
