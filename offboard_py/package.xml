@@ -77,12 +77,6 @@
   <exec_depend>tf</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>message_runtime</exec_depend>
-  <run_depend>python3-aruco</run_depend>
-  <run_depend>python3-numpy</run_depend>
-  <run_depend>python3-opencv</run_depend>
-  <run_depend>python3-apriltag</run_depend>
-  <run_depend>python3-math</run_depend>
-  <run_depend>python3-pyproj</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
