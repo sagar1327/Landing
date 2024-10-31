@@ -1,0 +1,5 @@
+aruco
+numpy
+opencv-python
+apriltag
+pyproj
