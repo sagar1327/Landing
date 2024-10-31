@@ -17,8 +17,8 @@ class TestPublisher():
 
         self.target_wp_msg = NavSatFix()
         ### For when manually giving the waypoints.
-        self.target_wp_msg.latitude = 29.200041
-        self.target_wp_msg.longitude = -81.007635
+        self.target_wp_msg.latitude = 29.18267
+        self.target_wp_msg.longitude = -81.04419
 
         self.target_wp_msg.header.frame_id = "map"
         self.target_wp_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=3)
