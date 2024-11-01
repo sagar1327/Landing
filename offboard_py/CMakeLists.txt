@@ -125,10 +125,10 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
+# include_directories(
 # include
-  ${catkin_INCLUDE_DIRS}
-)
+#  ${catkin_INCLUDE_DIRS}
+# )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -143,7 +143,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(fractal_detect src/fractal_detect.cpp)
+## add_executable(fractal_detect src/fractal_detect.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -156,7 +156,7 @@ add_executable(fractal_detect src/fractal_detect.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(fractal_detect ${catkin_LIBRARIES})
+## target_link_libraries(fractal_detect ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -195,14 +195,21 @@ target_link_libraries(fractal_detect ${catkin_LIBRARIES})
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(PROGRAMS
-   takeoff.py
-   monitor_state.py
+   alt_difference.py
+   apriltag_landing.py
    detect_apriltag.py
-   waypoint.py
-   waypoint_rpi.py
-   publish_wp.py
-   psuedo_publisher.py
-   controls.py
+   pid_controls_artag.py
+   test_WPpublisher.py
+   detectTag.py
+   fly_to_wp.py
+   manual_takeover.py
+   utm_to_lla.py
+   position2.py
+   apriltag_landing_rpi.py
+   detect_apriltag_rpi.py
+   getPositionError.py
+   pid_controls_artag_rpi.py
+   detect_square.py
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
