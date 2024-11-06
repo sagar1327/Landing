@@ -22,7 +22,7 @@ class Talker():
             rospy.logerr("Error opening the camera.")
             return
 
-        while not rospy.is_shutdown():
+        while self.cap.isOpened() and not rospy.is_shutdown():
             self.ret, self.frame = self.cap.read()
             if not self.ret:
                 rospy.logerr("Error reading frame from the camera.")
@@ -30,7 +30,7 @@ class Talker():
 
             # Convert the frame to a compressed and normal image message
             self.encoded_img = cv.imencode('.jpg', self.frame, [int(cv.IMWRITE_JPEG_QUALITY), 5])[1]  # Adjust quality here
-            self.comp_img_msg.data = self.encoded_img.tostring()
+            self.comp_img_msg.data = self.encoded_img.tobytes()
             self.normal_img_msg = self.bridge.cv2_to_imgmsg(self.frame,"bgr8")
 
             # Publish the compressed and normal image

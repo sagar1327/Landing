@@ -11,6 +11,7 @@ import rospy
 import cv2 as cv
 import numpy as np
 from sensor_msgs.msg import CompressedImage, Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 from offboard_py.msg import Center, SquareCenters
 from sensor_msgs.msg import NavSatFix
@@ -25,11 +26,13 @@ class SquareContourDetector:
         self.sq_img_msg = Image()
         self.sq_comp_img_msg = CompressedImage()
         self.sq_center_msg = Center()
+        self.target_class_msg = String()
 
         self.bridge = CvBridge()
         self.cv_image = []
 
         self.image_sub = rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.image_callback)
+        self.target_class_sub = rospy.Subscriber("/kevin/target/class",String, callback=self.target_class)
         self.target_wp = rospy.Subscriber("/kevin/search_report/inidividual/target/wp", NavSatFix, self.targetWP)
         self.image_pub = rospy.Publisher("/kevin/camera/square/rgb/image_raw", Image, queue_size=1)
         self.com_img_pub = rospy.Publisher("/kevin/camera/square/rgb/image_raw/compressed", CompressedImage, queue_size=1)
@@ -37,6 +40,9 @@ class SquareContourDetector:
 
         self.img_msg_received = False
         self.target_msg_received = False
+        self.target_class_received = False
+        self.initial_time = None
+        self.class_count = 0
         self.rate = rospy.Rate(60)
 
         rospy.loginfo("Square Contour Detector Node Initialized")
@@ -48,6 +54,10 @@ class SquareContourDetector:
     def targetWP(self, msg):
         self.target_wp_msg = msg
         self.target_msg_received = True
+
+    def target_class(self, msg):
+        self.target_class_msg = msg
+        self.target_class_received = True
 
     def find_square_contours(self):
         gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
@@ -107,6 +117,14 @@ def main():
             if SCD.target_msg_received:
                 text = "Lat: "+str(SCD.target_wp_msg.latitude)+"\n"+"Long: "+str(SCD.target_wp_msg.longitude)
                 cv.putText(SCD.cv_image,text,position,font,font_scale,color,thickness)
+            if SCD.target_class_received and not SCD.target_class_msg:
+                if SCD.initial_time is None:
+                    SCD.initial_time = rospy.Time.now().to_sec()
+                SCD.class_count += 1
+                if (rospy.Time.now().to_sec() - SCD.initial_time) > 5 and SCD.class_count>10:
+                    print("Class of target: N")
+                else:
+                    print("Class of target: R")
 
             SCD.sq_img_msg = SCD.bridge.cv2_to_imgmsg(SCD.cv_image, encoding="bgr8")
             encoded_img = cv.imencode('.jpg', SCD.cv_image, [int(cv.IMWRITE_JPEG_QUALITY), 1])[1]  # Adjust quality here  
