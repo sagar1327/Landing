@@ -35,7 +35,7 @@ class UTMToLLA():
 
         rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.uav_coordinate)
         rospy.Subscriber("/kevin/target/squares/center", Center, callback=self.sq_center)
-        self.lla_coordinate_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=1)
+        self.lla_coordinate_pub = rospy.Publisher("/kevin/search_report/inidividual/target/wp", NavSatFix, queue_size=1)
 
         # self.utm_coordinate_msg.point.x = -6.0 # Change value as required
         # self.utm_coordinate_msg.point.y = 0.0 # Change value as required
@@ -84,19 +84,18 @@ def main():
         #     UTL.lla_coordinate_pub.publish(UTL.lla_coordinate_msg)
 
         ## Solo testing
-        if UTL.uav_coordinate_received and (UTL.utm_coordinate_msg.point.x != 0.0 or UTL.utm_coordinate_msg.point.y != 0.0):
+        if UTL.uav_coordinate_received and UTL.sq_center_received and UTL.sq_center_msg.x!=0.0 and UTL.sq_center_msg.x!=0.0:
             start_lat_in_rad = math.radians(UTL.uav_coordinate_msg.latitude)
             meters_per_degree_lat = 111320
-            delta_lat = UTL.utm_coordinate_msg.point.y / meters_per_degree_lat
+            delta_lat = UTL.sq_center_msg.y / meters_per_degree_lat
             meters_per_degree_lon = 111320 * math.cos(start_lat_in_rad)
-            delta_long = UTL.utm_coordinate_msg.point.x / meters_per_degree_lon
+            delta_long = UTL.sq_center_msg.x / meters_per_degree_lon
 
             UTL.lla_coordinate_msg.latitude = UTL.uav_coordinate_msg.latitude + delta_lat
             UTL.lla_coordinate_msg.longitude = UTL.uav_coordinate_msg.longitude + delta_long
 
             UTL.lla_coordinate_msg.header.stamp = rospy.Time.now()
             UTL.lla_coordinate_pub.publish(UTL.lla_coordinate_msg)
-
 
         UTL.rate.sleep()
 

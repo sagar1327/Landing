@@ -27,6 +27,7 @@ class SquareContourDetector:
         self.sq_center_msg = Center()
 
         self.bridge = CvBridge()
+        self.cv_image = []
 
         self.image_sub = rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.image_callback)
         self.target_wp = rospy.Subscriber("/kevin/search_report/inidividual/target/wp", NavSatFix, self.targetWP)
@@ -48,11 +49,13 @@ class SquareContourDetector:
         self.target_wp_msg = msg
         self.target_msg_received = True
 
-    def find_square_contours(image,sq_center_msg):
-        gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    def find_square_contours(self):
+        gray = cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
         blur = cv.GaussianBlur(gray,(81,81),0)
         _, thresh = cv.threshold(blur, 150, 255, cv.THRESH_BINARY)
         contours, _ = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+        self.sq_center_msg = Center()
 
         if len(contours)!=0:
             for cnt in contours:
@@ -79,32 +82,39 @@ class SquareContourDetector:
                         # Check if pixel intensity is near the threshold (e.g., 200)
                         if 200 <= mean_pixel_value <= 255:  # Range near 200
                             # Draw the contour as the pixel intensity condition is satisfied
-                            cv.drawContours(image, [approx], 0, (0, 0, 255), 3)
+                            cv.drawContours(self.cv_image, [approx], 0, (0, 0, 255), 3)
                             M = cv.moments(cnt)
-                            cx = int(M['m10']/M['m00'])
-                            cy = int(M['m01']/M['m00'])
-                            sq_center_msg.x = cx
-                            sq_center_msg.y = cy
-                            cv.circle(image,(cx,cy),10,(0,255,0),2)
-
-        # Return the processed image
-        return image,sq_center_msg
+                            self.sq_center_msg.x = int(M['m10']/M['m00'])
+                            self.sq_center_msg.y = int(M['m01']/M['m00'])
+                            cv.circle(self.cv_image,(self.sq_center_msg.x,self.sq_center_msg.y),10,(0,255,0),2)
     
 
 def main():
     SCD = SquareContourDetector()
+
+    position = (10, 50)  # Bottom-left corner of the text
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    color = (255, 255, 255)  # White color in BGR
+    thickness = 2
     
     while not rospy.is_shutdown():
 
-        if SCD.img_msg_received and SCD.target_msg_received:
-            cv_image = SCD.bridge.compressed_imgmsg_to_cv2(SCD.img_msg,"jpg")
-            processed_image,SCD.sq_center_msg = SCD.find_square_contours(cv_image,SCD.sq_center_msg)
-            SCD.ros_image = SCD.bridge.cv2_to_imgmsg(processed_image, encoding="bgr8")
-            encoded_img = cv.imencode('.jpg', processed_image, [int(cv.IMWRITE_JPEG_QUALITY), 1])[1]  # Adjust quality here  
-            SCD.comp_img_msg.data = encoded_img.tostring()
+        if SCD.img_msg_received:
+            SCD.cv_image = SCD.bridge.compressed_imgmsg_to_cv2(SCD.img_msg,"bgr8")
+            SCD.find_square_contours()
 
-        SCD.image_pub.publish(SCD.ros_image)
-        SCD.com_img_pub.publish(SCD.comp_img_msg)
+            if SCD.target_msg_received:
+                text = "Lat: "+str(SCD.target_wp_msg.latitude)+"\n"+"Long: "+str(SCD.target_wp_msg.longitude)
+                cv.putText(SCD.cv_image,text,position,font,font_scale,color,thickness)
+
+            SCD.sq_img_msg = SCD.bridge.cv2_to_imgmsg(SCD.cv_image, encoding="bgr8")
+            encoded_img = cv.imencode('.jpg', SCD.cv_image, [int(cv.IMWRITE_JPEG_QUALITY), 1])[1]  # Adjust quality here  
+            SCD.sq_comp_img_msg.data = encoded_img.tobytes()
+
+        SCD.image_pub.publish(SCD.sq_img_msg)
+        SCD.com_img_pub.publish(SCD.sq_comp_img_msg)
+        # print(f"{SCD.sq_center_msg.x}, {SCD.sq_center_msg.y}")
         SCD.sq_center_pub.publish(SCD.sq_center_msg)
 
         SCD.img_msg_received = False
