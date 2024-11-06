@@ -61,6 +61,7 @@ add_message_files(
    MissionStatus.msg
    MissionName.msg
    SetPoint.msg
+   SquareCenters.msg
 )
 
 ## Generate services in the 'srv' folder

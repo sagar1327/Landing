@@ -5,6 +5,7 @@ import math
 from pyproj import Proj, transform
 from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import NavSatFix
+from offboard_py.msg import Center
 
 class UTMToLLA():
     """Convert UTM coordinates to LLA coordinates (WGS84)."""
@@ -26,27 +27,37 @@ class UTMToLLA():
         # rospy.Subscriber("/minion/pinpoint/odom", NavSatFix, callback=self.boat_coordinate)
 
         ## Solo testing the drone
-        self.utm_coordinate_msg = PointStamped()
-        self.utm_coordinate_msg.point.x = -6.0 # Change value as required
-        self.utm_coordinate_msg.point.y = 0.0 # Change value as required
+        self.sq_center_msg = Center()
         self.uav_coordinate_msg = NavSatFix()
-        self.uav_coordinate_received = False
-        rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.uav_coordinate)
-
+        self.utm_coordinate_msg = PointStamped()
         self.lla_coordinate_msg = NavSatFix()
         self.lla_coordinate_msg.header.frame_id = "map"
+
+        rospy.Subscriber("/mavros/global_position/raw/fix", NavSatFix, callback=self.uav_coordinate)
+        rospy.Subscriber("/kevin/target/squares/center", Center, callback=self.sq_center)
         self.lla_coordinate_pub = rospy.Publisher("/minion/kevin/target_wp", NavSatFix, queue_size=1)
+
+        # self.utm_coordinate_msg.point.x = -6.0 # Change value as required
+        # self.utm_coordinate_msg.point.y = 0.0 # Change value as required
+
+        self.uav_coordinate_received = False
+        self.sq_center_received = False
+
         self.rate = rospy.Rate(60)
 
-    def utm_coordinate(self, msg):
-        self.utm_coordinate_msg = msg
-        if msg.point.x != 0.0:
-            print("yes")
-        print(f"X: {msg.point.x}, Y: {msg.point.y}")
+    # def utm_coordinate(self, msg):
+    #     self.utm_coordinate_msg = msg
+    #     if msg.point.x != 0.0:
+    #         print("yes")
+    #     print(f"X: {msg.point.x}, Y: {msg.point.y}")
 
-    def boat_coordinate(self, msg):
-        self.boat_coordinate_msg = msg
-        self.boat_coordinate_received = True
+    # def boat_coordinate(self, msg):
+    #     self.boat_coordinate_msg = msg
+    #     self.boat_coordinate_received = True
+
+    def sq_center(self,msg):
+        self.sq_center_msg = msg
+        self.sq_center_received = True
 
     def uav_coordinate(self, msg):
         self.uav_coordinate_msg = msg
