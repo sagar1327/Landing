@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="detect_square" pkg="offboard_py" type="detect_square.py" required="true" output="screen" />
+    <node name="utm_to_lla" pkg="offboard_py" type="utm_to_lla.py" required="true" output="screen" />
+    <node name="detect_logo" pkg="offboard_py" type="logoDetect.py" required="true" output="screen" />
+</launch>
+

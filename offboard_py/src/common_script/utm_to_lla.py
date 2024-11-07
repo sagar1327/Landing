@@ -2,6 +2,7 @@
 
 import rospy
 import math
+import numpy as np
 from pyproj import Proj, transform
 from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import NavSatFix
@@ -87,9 +88,18 @@ def main():
         if UTL.uav_coordinate_received and UTL.sq_center_received and UTL.sq_center_msg.x!=0.0 and UTL.sq_center_msg.x!=0.0:
             start_lat_in_rad = math.radians(UTL.uav_coordinate_msg.latitude)
             meters_per_degree_lat = 111320
-            delta_lat = UTL.sq_center_msg.y / meters_per_degree_lat
+            delta_pixel_x = 640-UTL.sq_center_msg.x
+            delta_pixel_y = 480-UTL.sq_center_msg.y
+            apx = 48.70141/640
+            apy = 48.70141/480
+            alpha = np.abs(delta_pixel_x)*apx*np.pi/180
+            beta = np.abs(delta_pixel_y)*apy*np.pi/180
+            deltax_img = np.sign(delta_pixel_x)*np.tan(alpha)*6
+            deltay_img = -np.sign(delta_pixel_y)*np.tan(beta)*6
+            delta_lat = deltay_img / meters_per_degree_lat
             meters_per_degree_lon = 111320 * math.cos(start_lat_in_rad)
-            delta_long = UTL.sq_center_msg.x / meters_per_degree_lon
+            delta_long = deltax_img / meters_per_degree_lon
+            # print(f"Center: {640-UTL.sq_center_msg.x}, {(480-UTL.sq_center_msg.y)}")
 
             UTL.lla_coordinate_msg.latitude = UTL.uav_coordinate_msg.latitude + delta_lat
             UTL.lla_coordinate_msg.longitude = UTL.uav_coordinate_msg.longitude + delta_long

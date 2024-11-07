@@ -67,7 +67,9 @@ class SquareContourDetector:
 
         self.sq_center_msg = Center()
 
+        # print("checkpoint 1")
         if len(contours)!=0:
+            # print("checkpoint 2")
             for cnt in contours:
                 cnt = contours[0]
                 # Approximate the contour to check if it's a square
@@ -76,11 +78,13 @@ class SquareContourDetector:
 
                 # A square has 4 sides and is convex
                 if len(approx) == 4 and cv.isContourConvex(approx):
+                    # print("checkpoint 3")
                     # Compute the bounding box and check for square-like dimensions
                     x, y, w, h = cv.boundingRect(approx)
                     aspect_ratio = w / float(h)
 
                     if 0.9 <= aspect_ratio <= 1.1:  # Aspect ratio close to 1
+                        # print("checkpoint 4")
                         # Create a mask from the contour
                         mask = np.zeros_like(gray)
                         cv.fillPoly(mask, [approx], 255)
@@ -88,43 +92,63 @@ class SquareContourDetector:
                         # Extract pixel values from the mask
                         masked_pixels = cv.bitwise_and(gray, gray, mask=mask)
                         mean_pixel_value = cv.mean(masked_pixels, mask=mask)[0]  # Get mean pixel intensity
+                        # print(mean_pixel_value)
 
                         # Check if pixel intensity is near the threshold (e.g., 200)
-                        if 200 <= mean_pixel_value <= 255:  # Range near 200
+                        if 150 <= mean_pixel_value <= 255:  # Range near 200
+                            # print("checkpoint 5")
                             # Draw the contour as the pixel intensity condition is satisfied
                             cv.drawContours(self.cv_image, [approx], 0, (0, 0, 255), 3)
                             M = cv.moments(cnt)
                             self.sq_center_msg.x = int(M['m10']/M['m00'])
                             self.sq_center_msg.y = int(M['m01']/M['m00'])
                             cv.circle(self.cv_image,(self.sq_center_msg.x,self.sq_center_msg.y),10,(0,255,0),2)
+
+                            return 1
     
 
 def main():
     SCD = SquareContourDetector()
 
-    position = (10, 50)  # Bottom-left corner of the text
     font = cv.FONT_HERSHEY_SIMPLEX
-    font_scale = 1
+    font_scale = 0.5
     color = (255, 255, 255)  # White color in BGR
-    thickness = 2
+    thickness = 1
     
     while not rospy.is_shutdown():
 
         if SCD.img_msg_received:
             SCD.cv_image = SCD.bridge.compressed_imgmsg_to_cv2(SCD.img_msg,"bgr8")
-            SCD.find_square_contours()
+            ret = False
+            ret = SCD.find_square_contours()
 
             if SCD.target_msg_received:
-                text = "Lat: "+str(SCD.target_wp_msg.latitude)+"\n"+"Long: "+str(SCD.target_wp_msg.longitude)
-                cv.putText(SCD.cv_image,text,position,font,font_scale,color,thickness)
-            if SCD.target_class_received and not SCD.target_class_msg:
+                lat = f"Lat: {SCD.target_wp_msg.latitude}"
+                long = f"Long: {SCD.target_wp_msg.longitude}"
+                cv.putText(SCD.cv_image,lat,(10,400),font,font_scale,color,thickness)
+                cv.putText(SCD.cv_image,long,(10,420),font,font_scale,color,thickness)
+            # print(SCD.target_class_msg)
+            if ret and SCD.target_class_received:
+                # print("checkpoint 6")
                 if SCD.initial_time is None:
+                    # print("checkpoint 1")
                     SCD.initial_time = rospy.Time.now().to_sec()
-                SCD.class_count += 1
-                if (rospy.Time.now().to_sec() - SCD.initial_time) > 5 and SCD.class_count>10:
-                    print("Class of target: N")
-                else:
-                    print("Class of target: R")
+
+                if SCD.target_class_msg.data != "":
+                    SCD.class_count += 1
+                # print(rospy.Time.now().to_sec() - SCD.initial_time)
+                if (rospy.Time.now().to_sec() - SCD.initial_time) > 1:
+                    if SCD.class_count > 5:
+                        print("Class of target: N")
+                        SCD.initial_time = None
+                        cv.imwrite("/home/sagar/N_target.png", SCD.cv_image)
+                        # print("checkpoint 2")
+                    else:
+                        print("Class of target: R")
+                        SCD.initial_time = None
+                        cv.imwrite("/home/sagar/R_target.png", SCD.cv_image)
+                        # print("checkpoint 3")
+
 
             SCD.sq_img_msg = SCD.bridge.cv2_to_imgmsg(SCD.cv_image, encoding="bgr8")
             encoded_img = cv.imencode('.jpg', SCD.cv_image, [int(cv.IMWRITE_JPEG_QUALITY), 1])[1]  # Adjust quality here  
@@ -137,6 +161,7 @@ def main():
 
         SCD.img_msg_received = False
         SCD.target_msg_received = False
+        SCD.target_class_received = False
         SCD.rate.sleep()
 
 

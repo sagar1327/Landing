@@ -12,7 +12,7 @@ class DetectLogo():
     
     def __init__(self):
         rospy.init_node("detect_logo", anonymous=True)
-        self.model = YOLO('/home/sagar/personal_ws/src/Landing/offboard_py/src/UAV_Search_and_Report/train2/weights/best.pt')
+        self.model = YOLO('/home/sagar/personal_ws/src/Landing/offboard_py/src/UAV_Search_and_Report/land-water-model/train/weights/best.pt')
         self.frame = []
         self.labelClass = String()
         self.bridge = CvBridge()
@@ -60,7 +60,7 @@ def main():
 
     while not rospy.is_shutdown():
         if DL.camera_img_received:
-            results = DL.model.predict(DL.frame, conf=0.45, verbose=False)
+            results = DL.model.predict(DL.frame, conf=0.3, verbose=False)
 
             # Draw bounding boxes and confidence scores on the frame
             DL.draw_detections(results)
