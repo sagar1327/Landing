@@ -43,7 +43,7 @@ class SquareContourDetector:
         self.target_class_received = False
         self.initial_time = None
         self.class_count = 0
-        self.rate = rospy.Rate(60)
+        self.rate = rospy.Rate(5)
 
         rospy.loginfo("Square Contour Detector Node Initialized")
 
