@@ -62,6 +62,7 @@ add_message_files(
    MissionName.msg
    SetPoint.msg
    SquareCenters.msg
+   Helipad.msg
 )
 
 ## Generate services in the 'srv' folder
