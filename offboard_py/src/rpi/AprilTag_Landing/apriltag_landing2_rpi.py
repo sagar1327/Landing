@@ -16,18 +16,12 @@ class LandOnTag():
         rospy.init_node("Psuedo_publisher", anonymous=True)
         self.wp_reached = Bool()
         self.flyToMinion_msg = Bool()
-        self.land_on_boat = Bool()
-        self.land_on_boat.data = False
+        self.flyToMinion_msg.data = False
 
         # A psuedo variable to store boat status. Must be replaced later
         self.boat_status_msg = Bool()
         self.boat_status_msg.data = True
 
-        self.artag_msg = ArTag()
-        self.flyToMinion_msg.data = False
-        self.wp_reached_time = None
-
-        rospy.Subscriber("/kevin/waypoint_reached", Bool, callback=self.waypoint)
         rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
 
         # A psuedo subscriber to get the boat status. Must be changed later.
@@ -38,14 +32,6 @@ class LandOnTag():
         # High publishing rate is not required since once permission is received,
         # it doesn't need to be updated until UAV reached the next waypoint.
         self.rate = rospy.Rate(5)
-
-    def waypoint(self, msg):
-        self.wp_reached = msg
-        if self.wp_reached.data and self.wp_reached_time is None:
-            self.wp_reached_time = rospy.Time.now().to_sec()
-
-    def artag(self, msg):
-        self.artag_msg = msg
 
     def boat_status(self, msg):
         self.boat_status_msg = msg
@@ -62,10 +48,12 @@ def main():
         # 2) The UAV reached the given waypoint but no april tag found. Give permission to fly to next waypoint.
         if (LOT.boat_status_msg.data): #and not LOT.wp_reached.data):
             LOT.flyToMinion_msg.data = True
+            rospy.loginfo("FLying permission given")
             # if LOT.wp_reached.data and not LOT.artag_msg.detected:
             #     print("No April Tag.")      
         else:
             LOT.flyToMinion_msg.data = False
+            rospy.loginfo("FLying permission not given.")
 
         LOT.flyToMinion_pub.publish(LOT.flyToMinion_msg)
 

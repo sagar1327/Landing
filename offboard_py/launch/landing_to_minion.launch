@@ -2,7 +2,7 @@
 <launch>
     
     <!--Autonomous Takoeff-->
-    <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing2_rpi.py" required="true" output="screen" />
+    <!-- <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing2_rpi.py" required="true" output="screen" /> -->
     <node name="Fly_to_WP" pkg="offboard_py" type="fly_to_minion.py" required="true" output="screen" />
 
 </launch>
