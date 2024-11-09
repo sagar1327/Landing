@@ -62,6 +62,7 @@ add_message_files(
    MissionName.msg
    SetPoint.msg
    SquareCenters.msg
+   SearchNReport.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -82,6 +83,7 @@ add_message_files(
 generate_messages(
    DEPENDENCIES
    std_msgs  # Or other packages containing msgs
+   sensor_msgs
 )
 
 ################################################

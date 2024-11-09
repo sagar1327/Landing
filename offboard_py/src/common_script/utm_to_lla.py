@@ -17,7 +17,7 @@ class UTMToLLA():
         # self.utm_coordinate_msg = PointStamped()
         # rospy.Subscriber("/kevin/initial_point", PointStamped, callback=self.utm_coordinate)
 
-        ## VRX use only
+        ## VRX
         # self.boat_coordinate_msg = NavSatFix()
         # self.boat_coordinate_received = False
         # rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.boat_coordinate)
