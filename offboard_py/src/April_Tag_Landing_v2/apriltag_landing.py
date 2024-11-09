@@ -15,7 +15,7 @@ class LandOnTag():
     def __init__(self):
         rospy.init_node("Psuedo_publisher", anonymous=True)
         self.wp_reached = Bool()
-        self.flyToWp_msg = Bool()
+        self.flyToMinion_msg = Bool()
         self.land_on_boat = Bool()
         self.land_on_boat.data = False
 
@@ -24,17 +24,17 @@ class LandOnTag():
         self.boat_status_msg.data = True
 
         self.artag_msg = ArTag()
-        self.flyToWp_msg.data = False
+        self.flyToMinion_msg.data = False
         self.wp_reached_time = None
 
         rospy.Subscriber("/kevin/waypoint_reached", Bool, callback=self.waypoint)
         rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
 
         # A psuedo subscriber to get the boat status. Must be changed later.
-        rospy.Subscriber("/minion/kevin/status", Bool, callback=self.boat_status)
+        rospy.Subscriber("/minion/kevin/boat/status", Bool, callback=self.boat_status)
 
-        self.flyToWp_pub = rospy.Publisher("/minion/kevin/fly_to_wp", Bool, queue_size=1)
-        self.land_on_boat_pub = rospy.Publisher("/kevin/land_permission", Bool, queue_size=1)
+        self.flyToMinion_pub = rospy.Publisher("/minion/kevin/fly_to_minion", Bool, queue_size=1)
+        # self.land_on_boat_pub = rospy.Publisher("/kevin/land_permission", Bool, queue_size=1)
         # High publishing rate is not required since once permission is received,
         # it doesn't need to be updated until UAV reached the next waypoint.
         self.rate = rospy.Rate(5)
@@ -60,19 +60,14 @@ def main():
         # Conditions:
         # 1) If boat is ready and the UAV hasn't reached the given waypoint (Start of a mission.)
         # 2) The UAV reached the given waypoint but no april tag found. Give permission to fly to next waypoint.
-        if (LOT.boat_status_msg.data and not LOT.wp_reached.data) or \
-           (LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and not LOT.artag_msg.detected and not LOT.land_on_boat.data):
-            LOT.flyToWp_msg.data = True
-            if LOT.wp_reached.data and not LOT.artag_msg.detected:
-                print("No April Tag.")      
+        if (LOT.boat_status_msg.data): #and not LOT.wp_reached.data):
+            LOT.flyToMinion_msg.data = True
+            # if LOT.wp_reached.data and not LOT.artag_msg.detected:
+            #     print("No April Tag.")      
         else:
-            LOT.flyToWp_msg.data = False
+            LOT.flyToMinion_msg.data = False
 
-        if (LOT.wp_reached.data and (rospy.Time.now().to_sec() - LOT.wp_reached_time) > 3 and LOT.artag_msg.detected):
-            LOT.land_on_boat.data = True
-
-        LOT.flyToWp_pub.publish(LOT.flyToWp_msg)
-        LOT.land_on_boat_pub.publish(LOT.land_on_boat)
+        LOT.flyToMinion_pub.publish(LOT.flyToMinion_msg)
 
         LOT.rate.sleep()
 

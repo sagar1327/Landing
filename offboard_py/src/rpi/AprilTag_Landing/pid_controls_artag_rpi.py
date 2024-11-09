@@ -24,7 +24,7 @@ class Controls():
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
         self.land_on_boat_msg = Bool()
-        self.land_on_boat_msg.data = False
+        self.land_on_boat_msg.data = True
         self.setpoint = SetPoint()
         self.landing_seq_msg = String()
 
@@ -52,7 +52,7 @@ class Controls():
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)
         rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=self.uav_pose)
-        rospy.Subscriber("/minion/kevin/land/status", Bool, callback=self.landing_status)
+        # rospy.Subscriber("/minion/kevin/land/status", Bool, callback=self.landing_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
         self.setpoint_pub = rospy.Publisher("/kevin/pid/setpoint", SetPoint, queue_size=1)
