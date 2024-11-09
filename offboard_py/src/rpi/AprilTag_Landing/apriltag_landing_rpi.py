@@ -32,7 +32,7 @@ class LandOnTag():
         rospy.Subscriber("/kevin/artag/info", ArTag, callback=self.artag)
 
         # A psuedo subscriber to get the boat status. Must be changed later.
-        rospy.Subscriber("/minion/kevin/usv/status", Bool, callback=self.boat_status)
+        rospy.Subscriber("/minion/kevin/boat/status", Bool, callback=self.boat_status)
 
         self.flyToWp_pub = rospy.Publisher("/minion/kevin/fly_to_wp", Bool, queue_size=1)
         self.land_on_boat_pub = rospy.Publisher("/kevin/land_permission", Bool, queue_size=1)

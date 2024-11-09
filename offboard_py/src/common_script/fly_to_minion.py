@@ -7,7 +7,7 @@ from mavros_msgs.msg import State
 from sensor_msgs.msg import NavSatFix
 from mavros_msgs.msg import Waypoint
 from mavros_msgs.srv import WaypointPush, WaypointPull, SetMode
-from offboard_py.msg import MissionStatus, ArTag, SquareTarget, Target
+from offboard_py.msg import MissionStatus, ArTag
 
 
 class FlyToWP():
@@ -38,6 +38,8 @@ class FlyToWP():
         self.wp_pushed = False
         self.state_updated = False
 
+        self.boat_status_msg = Bool()
+
         self.usv_coordinate_msg = NavSatFix()
         self.usv_coordinate_received = False
         
@@ -52,7 +54,7 @@ class FlyToWP():
         rospy.Subscriber('mavros/state', State, callback=self.uav_state)
         rospy.Subscriber("/minion/kevin/fly_to_minion", Bool, callback=self.flyToMinion)
         # rospy.Subscriber("/kevin/square_target", SquareTarget, callback=self.sq_target)
-
+        rospy.Subscriber("/minion/kevin/boat/status", Bool, callback=self.boat_status)
         rospy.Subscriber("/minion/sensors/pinpoint/fix", NavSatFix, callback=self.usv_coordinate)
 
         self.wp_status_pub = rospy.Publisher("/kevin/waypoint_reached", Bool, queue_size=1)
@@ -63,12 +65,15 @@ class FlyToWP():
         self.state_updated = True
 
     def usv_coordinate(self, msg):
-        if np.abs(msg.latitude - self.search_wps[0]) > 0.000009 or np.abs(msg.longitude - self.search_wps[1]) > 0.000009:
+        if np.abs(msg.latitude - self.search_wps[0]) > 0.0001 or np.abs(msg.longitude - self.search_wps[1]) > 0.0001:
             self.search_wps = [msg.latitude, msg.longitude]
             self.usv_coordinate_received = True
 
     def flyToMinion(self, msg):
         self.flyToMinion_msg = msg
+
+    def boat_status(self, msg):
+        self.boat_status_msg = msg
 
     def push_wp(self,lat,lon,alt):
         self.single_wp.x_lat =  lat
@@ -101,7 +106,8 @@ def main():
     FTW = FlyToWP()
 
     while not rospy.is_shutdown():
-        if FTW.flyToMinion_msg.data and FTW.usv_coordinate_received:
+        # print(FTW.flyToMinion_msg.data)
+        if FTW.boat_status_msg.data and FTW.usv_coordinate_received:
             if not FTW.wp_pushed:
                 print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 5")
                 FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],5)
