@@ -5,8 +5,8 @@
 
     <!-- <node name="Publish_TargetWP" pkg="offboard_py" type="test_WPpublisher.py" required="true" output="screen" /> -->
     <!-- <node name="Publish_TargetWP" pkg="offboard_py" type="utm_to_lla.py" required="true" output="screen" /> -->
-    <!-- <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing.py" required="true" output="screen" /> -->
-    <!-- <node name="FLy_to_WP" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" /> -->
+    <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing.py" required="true" output="screen" />
+    <node name="Fly_to_WP" pkg="offboard_py" type="fly_to_wp.py" required="true" output="screen" />
 
     <node name="conver_rviz_points" pkg="offboard_py" type="convertRviztoLLA.py" required="true" output="screen">
        <remap from="/minion/sensor/pinpoint/odom" to="/wamv/sensors/gps/gps/fix"/>

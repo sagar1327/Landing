@@ -61,8 +61,8 @@ def main():
             new_lat = UTL.boat_coordinate_msg.latitude + delta_lat
             new_long = UTL.boat_coordinate_msg.longitude + delta_long
 
-            if np.abs(new_lat - UTL.previous_coordinate[0]) > 0.00005 or \
-                np.abs(new_long - UTL.previous_coordinate[1]) > 0.00005:
+            if np.abs(new_lat - UTL.previous_coordinate[0]) > 0.000009 or \
+                np.abs(new_long - UTL.previous_coordinate[1]) > 0.000009:
                 UTL.coordinate.x = new_long
                 UTL.coordinate.y = new_lat
                 UTL.lla_coordinate_msg.waypoints.append(UTL.coordinate)

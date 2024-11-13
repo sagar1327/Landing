@@ -7,7 +7,7 @@ from mavros_msgs.msg import State
 from sensor_msgs.msg import NavSatFix
 from mavros_msgs.msg import Waypoint
 from mavros_msgs.srv import WaypointPush, WaypointPull, SetMode
-from offboard_py.msg import MissionStatus, ArTag
+from offboard_py.msg import MissionStatus, ArTag, SquareTarget, Target
 
 
 class FlyToWP():
@@ -36,8 +36,11 @@ class FlyToWP():
 
         self.search_wps = [0,0]
         self.wp_pushed = False
-        self.new_wp_received = False
+        self.go_new_wp = False
         self.state_updated = False
+
+        self.square_target_msg = SquareTarget()
+        self.target_reached_time = None
         
         rospy.wait_for_service("/mavros/mission/pull")
         self.pull = rospy.ServiceProxy("/mavros/mission/pull", WaypointPull, persistent=True)
@@ -46,18 +49,17 @@ class FlyToWP():
         rospy.wait_for_service('/mavros/set_mode')
         self.set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
 
-        rospy.Subscriber("/minion/kevin/target_wp", NavSatFix, callback=self.waypoint)
+        rospy.Subscriber("/kevin/search_report/wp", NavSatFix, callback=self.waypoint)
         rospy.Subscriber('mavros/state', State, callback=self.uav_state)
         rospy.Subscriber("/minion/kevin/fly_to_wp", Bool, callback=self.flyToWp)
+        rospy.Subscriber("/kevin/square_target", SquareTarget, callback=self.sq_target)
 
         self.wp_status_pub = rospy.Publisher("/kevin/waypoint_reached", Bool, queue_size=1)
         self.rate = rospy.Rate(5)
 
     def waypoint(self, msg):
-
-        if np.abs(msg.latitude - self.search_wps[0]) > 0.000009 and np.abs(msg.longitude - self.search_wps[1]) > 0.000009:
-            self.search_wps = [msg.latitude, msg.longitude]
-            self.new_wp_received = True
+        self.search_wps = msg
+        self.go_new_wp = True
 
     def uav_state(self, msg):
         self.uav_state_msg = msg
@@ -66,6 +68,8 @@ class FlyToWP():
     def flyToWp(self, msg):
         self.flyToWp_msg = msg
 
+    def sq_target(self, msg):
+        self.square_target_msg = msg
 
     def push_wp(self,lat,lon,alt):
         self.single_wp.x_lat =  lat
@@ -98,25 +102,32 @@ def main():
     FTW = FlyToWP()
 
     while not rospy.is_shutdown():
-        if FTW.flyToWp_msg.data and FTW.new_wp_received:
+        if FTW.flyToWp_msg.data and FTW.go_new_wp:
             if not FTW.wp_pushed:
                 print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 8")
                 FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],8)
+
+                if len(FTW.search_wps) == 2:
+                    FTW.search_wps.pop(0)
 
             if FTW.state_updated and FTW.uav_state_msg.armed:
                 mode = FTW.set_mode(custom_mode='AUTO.MISSION')
                 if mode.mode_sent:
                     print("Mode changed to mission. Executing the current mission.")
 
-                    FTW.new_wp_received = False
+                    FTW.go_new_wp = False
                     FTW.wp_pushed = False
 
         if FTW.state_updated:
             if FTW.uav_state_msg.mode == "AUTO.LOITER":
                 FTW.wp_reached.data = True
+                FTW.target_reached_time = rospy.Time.now().to_sec()
                 print("waypoint reached.")
             else:
                 FTW.wp_reached.data = False
+
+        if FTW.wp_reached.data and (rospy.Time.now().to_sec() - FTW.target_reached_time) > 3 and not FTW.square_target_msg.target[0].detected:
+            FTW.go_new_wp = True
 
         FTW.wp_status_pub.publish(FTW.wp_reached)
 

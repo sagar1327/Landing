@@ -13,7 +13,7 @@ import numpy as np
 from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
-from offboard_py.msg import Center, SquareCenters
+from offboard_py.msg import Center, SquareCenters, Target, SquareTarget, SearchNReport
 from sensor_msgs.msg import NavSatFix
 
 class SquareContourDetector:
@@ -27,16 +27,19 @@ class SquareContourDetector:
         self.sq_comp_img_msg = CompressedImage()
         self.sq_center_msg = Center()
         self.target_class_msg = String()
+        self.targets_info = SquareTarget()
+        self.individual_target = Target()
 
         self.bridge = CvBridge()
         self.cv_image = []
 
-        self.image_sub = rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.image_callback)
-        self.target_class_sub = rospy.Subscriber("/kevin/target/class",String, callback=self.target_class)
-        self.target_wp = rospy.Subscriber("/kevin/search_report/inidividual/target/wp", NavSatFix, self.targetWP)
+        rospy.Subscriber("/kevin/camera/rgb/image_raw/compressed", CompressedImage, self.image_callback)
+        rospy.Subscriber("/kevin/target/class",String, callback=self.target_class)
+        rospy.Subscriber("/kevin/search_report/wp", SearchNReport, self.targetWP)
         self.image_pub = rospy.Publisher("/kevin/camera/square/rgb/image_raw", Image, queue_size=1)
         self.com_img_pub = rospy.Publisher("/kevin/camera/square/rgb/image_raw/compressed", CompressedImage, queue_size=1)
         self.sq_center_pub = rospy.Publisher("/kevin/target/squares/center", Center, queue_size=1)
+        self.target_info_pub = rospy.Publisher("/kevin/square_target", SquareTarget, queue_size=1)
 
         self.img_msg_received = False
         self.target_msg_received = False
@@ -66,6 +69,7 @@ class SquareContourDetector:
         contours, _ = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         self.sq_center_msg = Center()
+        self.individual_target = Target()
 
         # print("checkpoint 1")
         if len(contours)!=0:
@@ -104,7 +108,14 @@ class SquareContourDetector:
                             self.sq_center_msg.y = int(M['m01']/M['m00'])
                             cv.circle(self.cv_image,(self.sq_center_msg.x,self.sq_center_msg.y),10,(0,255,0),2)
 
-                            return 1
+                            self.individual_target.center.x = self.sq_center_msg.x
+                            self.individual_target.center.y = self.sq_center_msg.y
+                            self.individual_target.detected = True
+
+                self.targets_info.append(self.individual_target)
+
+        if self.individual_target.detected:
+            return 1
     
 
 def main():
@@ -158,6 +169,7 @@ def main():
         SCD.com_img_pub.publish(SCD.sq_comp_img_msg)
         # print(f"{SCD.sq_center_msg.x}, {SCD.sq_center_msg.y}")
         SCD.sq_center_pub.publish(SCD.sq_center_msg)
+        SCD.target_info_pub.publish(SCD.targets_info)
 
         SCD.img_msg_received = False
         SCD.target_msg_received = False
