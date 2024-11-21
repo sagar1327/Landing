@@ -1,0 +1,22 @@
+######### Steps to follow when doing onsite testing ####################
+
+## Setup Rpi as master.
+Make sure the following lines are in .bashrc file:
+1. unset ROS_HOSTNAME
+2. export ROS_IP=201.7.90.189
+3. export ROS_MASTER_IP=${ROS_IP}
+4. export ROS_MASTER_URI=http://${ROS_MASTER_IP}:11311/
+
+## Setup local machine as slave.
+Make sure the following lines are in .bashrc file:
+1. unset ROS_HOSTNAME
+2. export ROS_IP=201.7.90.89
+3. export ROS_MASTER_IP=201.7.90.189
+4. export ROS_MASTER_URI=http://${ROS_MASTER_IP}:11311/
+
+## Run Mavros and camera nodes in Rpi terminal.
+Terminal 1 - roslaunch offboard_py mavros_camera.launch
+
+## Copy bag files from Rpi.
+scp ubuntu@201.7.90.189:<path to the file> <path of destination folder>
+By default $HOME is the selected directory in Rpi.
