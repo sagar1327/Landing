@@ -56,7 +56,7 @@ class FlyToWP():
         # rospy.Subscriber("/minion/kevin/fly_to_minion", Bool, callback=self.flyToMinion)
         # rospy.Subscriber("/kevin/square_target", SquareTarget, callback=self.sq_target)
         rospy.Subscriber("/minion/kevin/boat/status", Int64, callback=self.boat_status)
-        rospy.Subscriber("/wamv/sensors/gps/gps/fix", NavSatFix, callback=self.usv_coordinate)
+        rospy.Subscriber("/minion/sensors/pinpoint/fix", NavSatFix, callback=self.usv_coordinate)
 
         # self.wp_status_pub = rospy.Publisher("/kevin/waypoint_reached", Bool, queue_size=1)
         self.rate = rospy.Rate(5)
@@ -106,28 +106,27 @@ def main():
     FTW = FlyToWP()
 
     while not rospy.is_shutdown():
-        # print(FTW.boat_status_msg.data)
-        # print(FTW.uav_state_msg.mode)
-        if not FTW.takeoff_initiated:
-            if FTW.boat_status_msg.data == 1 and FTW.state_updated and FTW.uav_state_msg.armed:
-                mode = FTW.set_mode(custom_mode="AUTO.TAKEOFF")
-                if mode.mode_sent:
-                    print("Mode changed to AUTO.TAKEOFF. TakingOff ...")
-                
-                FTW.takeoff_initiated = True
+        # print(FTW.flyToMinion_msg.data)
+        if FTW.boat_status_msg.data == 1 and FTW.state_updated and FTW.uav_state_msg.armed \
+           and not FTW.takeoff_initiated:
+            mode = FTW.set_mode(custom_mode="AUTO.TAKEOFF")
+            if mode.mode_sent:
+                print("Mode changed to AUTO.TAKEOFF. TakingOff ...")
+            
+            FTW.takeoff_initiated = True
 
-            elif FTW.state_updated and not FTW.uav_state_msg.armed:
-                print(f"Drone is not armed. Please arm the drone.")
+        elif FTW.state_updated and not FTW.uav_state_msg.armed:
+            print(f"Drone is not armed. Please arm the drone.")
 
-            elif FTW.state_updated and FTW.uav_state_msg.armed:
-                print("Waiting for minion to give permission.")
+        else:
+            print("Waiting for minion to give permission.")
         
-        if FTW.boat_status_msg.data == 2 and (rospy.Time.now().to_sec() -  FTW.takeoff_time) > 3 \
+        if FTW.boat_status_msg.data == 2 and (rospy.Time.now().to_sec() -  FTW.takeoff_time) > 5 \
            and FTW.state_updated and FTW.uav_state_msg.mode == "AUTO.LOITER":
             if not FTW.wp_pushed:
-                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1] - 0.00005}\n3. Alt - 6")
-                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1]-0.00005,6)
-                mode = FTW.set_mode(custom_mode="AUTO.MISSION")
+                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 5")
+                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],4)
+                mode = FTW.set_mode(custom_mode='AUTO.MISSION')
                 if mode.mode_sent:
                     print("Mode changed to mission. Flying towards minion.")
 

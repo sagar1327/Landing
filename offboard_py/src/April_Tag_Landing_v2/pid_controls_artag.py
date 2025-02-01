@@ -7,7 +7,9 @@ from mavros_msgs.msg import State, WaypointReached
 from mavros_msgs.srv import SetMode
 from geometry_msgs.msg import  TwistStamped, PoseStamped
 from tf.transformations import euler_from_quaternion
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Int64, String
+from nav_msgs.msg import Odometry
+from gazebo_msgs.msg import ModelStates
 
 
 class Controls():
@@ -23,11 +25,13 @@ class Controls():
         self.uav_vel_msg = TwistStamped()
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
-        self.land_on_boat_msg = Bool()
+        self.minion_pose_msg = ModelStates()
+        self.land_on_boat_msg = Int64()
         self.setpoint = SetPoint()
         self.landing_seq_msg = String()
 
         self.current_deltaS = np.Inf
+        self.theta_horizontal = 0
         # self.previous_deltaS = 0.0
         self.previous_x = 0.0
         self.previous_y = 0.0
@@ -37,7 +41,8 @@ class Controls():
         self.integral_y = 0.0
         self.land_time = None
         self.proximity = []
-        self.angle = (0, 0, 0)
+        self.uav_orientation = (0, 0, 0)
+        self.minion_orientation = (0, 0, 0)
         self.hover_alt = None
         self.artag_lost = False
         self.targetWP_reached_time = None
@@ -51,7 +56,8 @@ class Controls():
         rospy.Subscriber("/mavros/state", State, callback=self.uav_state)
         rospy.Subscriber("/kevin/artag/altitude", ArTagAltitude, callback=self.artag_alt)
         rospy.Subscriber("/mavros/local_position/pose",PoseStamped,callback=self.uav_pose)
-        rospy.Subscriber("/kevin/land_permission", Bool, callback=self.landing_status)
+        rospy.Subscriber("/gazebo/model_states",ModelStates,callback=self.minion_pose)
+        rospy.Subscriber("/minion/kevin/boat/status", Int64, callback=self.landing_status)
 
         self.uav_vel_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel", TwistStamped, queue_size=3)
         self.setpoint_pub = rospy.Publisher("/kevin/pid/setpoint", SetPoint, queue_size=1)
@@ -75,7 +81,11 @@ class Controls():
 
     def uav_pose(self, msg):
         self.current_pose = msg
-        self.angle = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
+        self.uav_orientation = euler_from_quaternion([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
+
+    def minion_pose(self, msg):
+        self.minion_pose_msg = msg
+        self.minion_orientation = euler_from_quaternion([msg.pose[4].orientation.x,msg.pose[4].orientation.y,msg.pose[4].orientation.z,msg.pose[4].orientation.w])
 
     def align(self, tagfamily="tag36h11"):
         current_tag_family = tagfamily
@@ -104,7 +114,7 @@ class Controls():
         self.previous_tag_family = current_tag_family
 
         # Calculate the angle between the estimated position and the target position
-        theta_horizontal = theta_img+self.angle[2]-np.pi/2 #Angle to the target in x-y plane
+        theta_horizontal = theta_img+self.uav_orientation[2]-np.pi/2 #Angle to the target in x-y plane
         theta_vertical = np.arctan2(self.current_deltaS, tag_alt) #Angle to the target in relative to straight down plane
 
         if self.setpoint.setpoint.x == 0 and self.setpoint.setpoint.y == 0:
@@ -114,20 +124,20 @@ class Controls():
         # PD controller
         # kp = 1;ki = 0.0;kd = 0.1
         # linear_vel = kp*self.current_deltaS
-        kpx = 0.5;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
+        kpx = 0.2;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
         kpy = 0.5;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
         deltax = self.current_deltaS*np.cos(theta_horizontal)
         deltay = self.current_deltaS*np.sin(theta_horizontal)
         linear_vel_x = kpx*deltax
         linear_vel_y = kpy*deltay
 
-        desired_heading = np.pi/2
-        current_heading = self.angle[2]
+        desired_heading = self.minion_orientation[2]
+        current_heading = self.uav_orientation[2]
         gain_heading = 0.2
         angular_z_vel = gain_heading*(desired_heading-current_heading)
         self.uav_vel_msg.twist.angular.z = angular_z_vel
 
-        if theta_vertical <= 5*np.pi/180: #and tag_alt > 3:
+        if theta_vertical <= 8*np.pi/180: #and tag_alt > 3:
             if self.state_updated and self.uav_state_msg.mode == "OFFBOARD":
                 self.current_seq = self.landing_sequences[1]
                 self.landing_seq_msg.data = self.current_seq
@@ -219,14 +229,27 @@ class Controls():
                 #               f"\nlinearz_vel: {self.uav_vel_msg.twist.linear.z}\n")
 
     def land(self):
+        # if self.land_time is None:
+        #     self.land_time = rospy.Time.now().to_sec()
+        # self.proximity.append(self.current_deltaS)
+        # # rospy.loginfo(f"\nArray: {self.proximity}\n")
+        # if (rospy.Time.now().to_sec() - self.land_time) > 0.6:
+        #     # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
+        #     print(f"{np.mean(self.proximity)} {self.artag_alt_msg.altitude}")
+        #     if np.mean(self.proximity) < 0.5 and self.artag_alt_msg.altitude < 1:
+        #         return 1 
+        #     else:
+        #         self.land_time = None
+        #         self.proximity = []
+        # return 0
         if self.land_time is None:
             self.land_time = rospy.Time.now().to_sec()
-        self.proximity.append(self.current_deltaS)
+        deltax = self.current_deltaS*np.cos(self.theta_horizontal)
+        deltay = self.current_deltaS*np.sin(self.theta_horizontal)
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
-        if (rospy.Time.now().to_sec() - self.land_time) > 0.6:
-            # rospy.loginfo(f"\nProximity: {np.mean(self.proximity)}\nActual Alt: {self.actual_alt}")
-            print(f"{np.mean(self.proximity)} {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.1 and self.artag_alt_msg.altitude < 0.3:
+        if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
+            print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
+            if (0 < deltax < 0.5) and (-0.2 < deltay < 0.2) and self.artag_alt_msg.altitude < 0.5:
                 return 1 
             else:
                 self.land_time = None
@@ -240,7 +263,7 @@ def main():
     while not rospy.is_shutdown():
 
         # print(Ct.land_on_boat_msg.data)
-        if Ct.land_on_boat_msg.data:
+        if Ct.land_on_boat_msg.data == 2:
             # if Ct.targetWP_reached_time is None:
             #     Ct.targetWP_reached_time = rospy.Time.now().to_sec()
 

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    
+    <!--Simulation-->
+   <node name="detect_apriltag" pkg="offboard_py" type="detect_apriltag.py" required="true" output="screen" />
+
+</launch>
