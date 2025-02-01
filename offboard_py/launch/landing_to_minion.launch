@@ -2,7 +2,12 @@
 <launch>
     
     <!--Autonomous Takoeff-->
-    <!-- <node name="AprilTag_landing" pkg="offboard_py" type="apriltag_landing2_rpi.py" required="true" output="screen" /> -->
     <node name="Fly_to_WP" pkg="offboard_py" type="fly_to_minion.py" required="true" output="screen" />
+
+    <!--Manual Takeover-->
+    <node name="takeover" pkg="offboard_py" type="manual_takeover.py" required="true" output="screen" />
+
+    <!--AUtonomous Landing-->
+    <!-- <node name="pid_controls" pkg="offboard_py" type="pid_controls_artag_rpi.py" required="true" output="screen" /> -->
 
 </launch>

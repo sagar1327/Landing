@@ -24,7 +24,7 @@ class Controls():
         self.uav_vel_msg.header.frame_id = 'map'
         self.current_pose = PoseStamped()
         self.land_on_boat_msg = Bool()
-        self.land_on_boat_msg.data = False
+        self.land_on_boat_msg.data = True
         self.setpoint = SetPoint()
         self.landing_seq_msg = String()
 
@@ -117,7 +117,7 @@ class Controls():
         # linear_vel = kp*self.current_deltaS
         ###### For drone 2 the gain values are negative
         kpx = 0.3;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
-        kpy = 0.5;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
+        kpy = 0.8;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
         deltax = self.current_deltaS*np.cos(theta_horizontal)
         deltay = self.current_deltaS*np.sin(theta_horizontal)
         linear_vel_x = kpx*deltax
@@ -228,7 +228,7 @@ class Controls():
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
             print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
-            if np.mean(self.proximity) < 0.8 and self.artag_alt_msg.altitude < 1.5:
+            if np.mean(self.proximity) < 0.2 and self.artag_alt_msg.altitude < 0.5:
                 return 1 
             else:
                 self.land_time = None

@@ -11,16 +11,15 @@ from offboard_py.msg import MissionStatus, ArTag
 
 
 class FlyToWP():
-    """A node to make the drone fly to a waypoint.
-       Requires: 1) waypoint coordinates. 2) Permission to fly.
-       Outputs: True if reached target waypoint and false otherwise."""
+    """A node to make the drone takeoff and fly to minion.
+       Requires: 1) Minion GPS Coordinates. 2) Permission to takeoff."""
     def __init__(self):
 
-        rospy.init_node("Fly_to_wp",anonymous=True)
+        rospy.init_node("Fly_to_minion",anonymous=True)
         self.uav_state_msg = State()
         self.single_wp = Waypoint()
-        self.flyToMinion_msg = Bool()
-        self.flyToMinion_msg.data = False
+        # self.flyToMinion_msg = Bool()
+        # self.flyToMinion_msg.data = False
         self.wp_reached = Bool()
         self.wp_reached.data = False
 
@@ -34,14 +33,15 @@ class FlyToWP():
         self.single_wp.param4 = float('nan')
         self.wp_pushed = False
 
-        self.search_wps = [0,0]
-        self.wp_pushed = False
+        # self.search_wps = [0,0]
         self.state_updated = False
 
         self.boat_status_msg = Bool()
 
         self.usv_coordinate_msg = NavSatFix()
         self.usv_coordinate_received = False
+
+        self.takeoff_time = rospy.Time.now().to_sec()
         
         rospy.wait_for_service("/mavros/mission/pull")
         self.pull = rospy.ServiceProxy("/mavros/mission/pull", WaypointPull, persistent=True)
@@ -52,9 +52,9 @@ class FlyToWP():
 
         # rospy.Subscriber("/kevin/search_report/wp", NavSatFix, callback=self.waypoint)
         rospy.Subscriber('mavros/state', State, callback=self.uav_state)
-        rospy.Subscriber("/minion/kevin/fly_to_minion", Bool, callback=self.flyToMinion)
+        # rospy.Subscriber("/minion/kevin/fly_to_minion", Bool, callback=self.flyToMinion)
         # rospy.Subscriber("/kevin/square_target", SquareTarget, callback=self.sq_target)
-        rospy.Subscriber("/minion/kevin/boat/status", Bool, callback=self.boat_status)
+        rospy.Subscriber("/minion/kevin/boat/status", Int64, callback=self.boat_status)
         rospy.Subscriber("/minion/sensors/pinpoint/fix", NavSatFix, callback=self.usv_coordinate)
 
         self.wp_status_pub = rospy.Publisher("/kevin/waypoint_reached", Bool, queue_size=1)
@@ -69,8 +69,8 @@ class FlyToWP():
             self.search_wps = [msg.latitude, msg.longitude]
             self.usv_coordinate_received = True
 
-    def flyToMinion(self, msg):
-        self.flyToMinion_msg = msg
+    # def flyToMinion(self, msg):
+    #     self.flyToMinion_msg = msg
 
     def boat_status(self, msg):
         self.boat_status_msg = msg
@@ -107,19 +107,25 @@ def main():
 
     while not rospy.is_shutdown():
         # print(FTW.flyToMinion_msg.data)
-        if FTW.boat_status_msg.data and FTW.usv_coordinate_received:
+        if FTW.boat_status_msg.data == 1 and FTW.state_updated and FTW.uav_state_msg.armed 
+           and not FTW.uav_state_msg.mode == "AUTO.TAKEOFF":
+            mode = FTW.set_mode(custom_mode='AUTO.TAKEOFF')
+                if mode.mode_sent:
+                    print("Mode changed to AUTO.TAKEOFF. TakingOff ...")
+            
+            time_threshold = 10
+        else:
+            print(f"Current mode is {FTW.uav_state_msg.mode}. Kevin is in the air.")
+            time_threshold = 3
+        
+        if FTW.boat_status_msg.data == 2 and (rospy.Time.now().to_sec() -  FTW.takeoff_time) > time_threshold and
+           and FTW.state_updated and FTW.uav_state_msg.mode == "AUTO.LOITER":
             if not FTW.wp_pushed:
                 print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 5")
-                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],5)
-
-            if FTW.state_updated and FTW.uav_state_msg.armed:
+                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],4)
                 mode = FTW.set_mode(custom_mode='AUTO.MISSION')
                 if mode.mode_sent:
-                    print("Mode changed to mission. Executing the current mission.")
-
-                    # FTW.go_new_wp = False
-                    FTW.wp_pushed = False
-                    FTW.usv_coordinate_received = False
+                    print("Mode changed to mission. Flying towards minion.")
 
         # if FTW.state_updated:
         #     if FTW.uav_state_msg.mode == "AUTO.LOITER":
