@@ -124,13 +124,13 @@ class Controls():
         # linear_vel = kp*self.current_deltaS
         ###### For drone 2 the gain values are negative
         kpx = 0.3;kix = 0.0;kdx = 0.0 #kix = 0.0;kdx = 0.08
-        kpy = 0.8;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
+        kpy = 0.3;kiy = 0.0;kdy = 0.0 #kiy = 0.08;kdy = 0.06
         deltax = self.current_deltaS*np.cos(self.theta_horizontal)
         deltay = self.current_deltaS*np.sin(self.theta_horizontal)
         linear_vel_x = kpx*deltax
         linear_vel_y = kpy*deltay
 
-        ## Check the desired heading
+        # Check the desired heading
         desired_heading = self.minion_orientation[2]
         current_heading = self.angle[2]
         gain_heading = 0.2
@@ -229,31 +229,31 @@ class Controls():
                 #               f"\nlinearz_vel: {self.uav_vel_msg.twist.linear.z}\n")
 
     def land(self):
-        # if self.land_time is None:
-        #     self.land_time = rospy.Time.now().to_sec()
-        # self.proximity.append(self.current_deltaS)
-        # # rospy.loginfo(f"\nArray: {self.proximity}\n")
-        # if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
-        #     print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
-        #     if np.mean(self.proximity) < 0.5 and self.artag_alt_msg.altitude < 0.5:
-        #         return 1 
-        #     else:
-        #         self.land_time = None
-        #         self.proximity = []
-        # return 0
         if self.land_time is None:
             self.land_time = rospy.Time.now().to_sec()
-        deltax = self.current_deltaS*np.cos(self.theta_horizontal)
-        deltay = self.current_deltaS*np.sin(self.theta_horizontal)
+        self.proximity.append(self.current_deltaS)
         # rospy.loginfo(f"\nArray: {self.proximity}\n")
         if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
             print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
-            if (0 < deltax < 0.5) and (-0.2 < deltay < 0.2) and self.artag_alt_msg.altitude < 0.5:
+            if np.mean(self.proximity) < 0.3 and self.artag_alt_msg.altitude < 0.5:
                 return 1 
             else:
                 self.land_time = None
                 self.proximity = []
         return 0
+        # if self.land_time is None:
+        #     self.land_time = rospy.Time.now().to_sec()
+        # deltax = self.current_deltaS*np.cos(self.theta_horizontal)
+        # deltay = self.current_deltaS*np.sin(self.theta_horizontal)
+        # # rospy.loginfo(f"\nArray: {self.proximity}\n")
+        # if (rospy.Time.now().to_sec() - self.land_time) > 0.5:
+        #     print(f"Proximity: {np.mean(self.proximity)}, Altitude: {self.artag_alt_msg.altitude}")
+        #     if (0 < deltax < 0.5) and (-0.2 < deltay < 0.2) and self.artag_alt_msg.altitude < 0.5:
+        #         return 1 
+        #     else:
+        #         self.land_time = None
+        #         self.proximity = []
+        # return 0
 
 
 def main():
@@ -261,7 +261,7 @@ def main():
     Ct = Controls()
     while not rospy.is_shutdown():
 
-        if Ct.land_on_boat_msg.data:
+        if Ct.land_on_boat_msg.data == 2:
             # if Ct.targetWP_reached_time is None:
             #     Ct.targetWP_reached_time = rospy.Time.now().to_sec()
 

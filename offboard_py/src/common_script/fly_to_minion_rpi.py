@@ -107,25 +107,26 @@ def main():
 
     while not rospy.is_shutdown():
         # print(FTW.flyToMinion_msg.data)
-        if FTW.boat_status_msg.data == 1 and FTW.state_updated and FTW.uav_state_msg.armed \
-           and not FTW.takeoff_initiated:
-            mode = FTW.set_mode(custom_mode="AUTO.TAKEOFF")
-            if mode.mode_sent:
-                print("Mode changed to AUTO.TAKEOFF. TakingOff ...")
-            
-            FTW.takeoff_initiated = True
+        if not FTW.takeoff_initiated:
+            if FTW.boat_status_msg.data == 1 and FTW.state_updated and FTW.uav_state_msg.armed :
+                mode = FTW.set_mode(custom_mode="AUTO.TAKEOFF")
+                if mode.mode_sent:
+                    print("Mode changed to AUTO.TAKEOFF. TakingOff ...")
+                
+                FTW.takeoff_initiated = True
 
-        elif FTW.state_updated and not FTW.uav_state_msg.armed:
-            print(f"Drone is not armed. Please arm the drone.")
+            elif FTW.state_updated and not FTW.uav_state_msg.armed:
+                print(f"Drone is not armed. Please arm the drone.")
 
-        else:
-            print("Waiting for minion to give permission.")
+            elif FTW.state_updated and FTW.uav_state_msg.armed:
+                print("Waiting for minion to give permission.")
         
+        # print(FTW.uav_state_msg.mode)
         if FTW.boat_status_msg.data == 2 and (rospy.Time.now().to_sec() -  FTW.takeoff_time) > 5 \
            and FTW.state_updated and FTW.uav_state_msg.mode == "AUTO.LOITER":
             if not FTW.wp_pushed:
-                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 5")
-                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],4)
+                print(f"Fly to wp.\nPushing wp:\n1. Lat - {FTW.search_wps[0]}\n2. Lon - {FTW.search_wps[1]}\n3. Alt - 4")
+                FTW.wp_pushed = FTW.push_wp(FTW.search_wps[0],FTW.search_wps[1],6)
                 mode = FTW.set_mode(custom_mode='AUTO.MISSION')
                 if mode.mode_sent:
                     print("Mode changed to mission. Flying towards minion.")
